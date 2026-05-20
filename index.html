@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Library School System</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            900: '#0F172A',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- React & ReactDOM Production CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel standalone untuk JSX in-browser compiling -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- jsPDF & jsPDF-AutoTable untuk ekspor PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- SheetJS (XLSX) untuk ekspor Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        /* Animasi Kustom & Transisi Halus */
+        @keyframes scan {
+            0%, 100% { top: 0%; }
+            50% { top: 100%; }
+        }
+        .animate-scan {
+            animation: scan 2s infinite linear;
+        }
+        .line-glow {
+            box-shadow: 0 0 10px 2px rgba(245, 158, 11, 0.8);
+        }
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // ==========================================
+        // INDEPENDENT INLINE SVG ICON MAPPER
+        // ==========================================
+        const Icon = ({ name, className = "w-5 h-5" }) => {
+            const icons = {
+                BookOpen: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                ),
+                Users: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                ),
+                ArrowLeftRight: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                ),
+                Clock: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                ),
+                Award: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                    </svg>
+                ),
+                QrCode: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h3m-3 0h3m-3 10h3m-9-10h3m-3 0V7m0 3v3m0 0h3m-9 7h3m-3 0v3m0-3h3m2-10h2m-2 3h2m-10-14h4v4h-4V3zm0 14h4v4h-4v-4zm14 0h4v4h-4v-4zm0-14h4v4h-4V3z" />
+                    </svg>
+                ),
+                Settings: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                ),
+                FileText: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                ),
+                BarChart2: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                ),
+                Search: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                ),
+                Plus: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                ),
+                Edit2: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                ),
+                Trash2: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                ),
+                Download: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                ),
+                Upload: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                ),
+                Shield: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                ),
+                Sun: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 7a5 5 0 100 10 5 5 0 000-10z" />
+                    </svg>
+                ),
+                Moon: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                ),
+                Menu: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                ),
+                X: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                ),
+                Check: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                ),
+                AlertTriangle: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                ),
+                Info: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                ),
+                Calendar: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                ),
+                Star: (
+                    <svg fill="currentColor" viewBox="0 0 24 24" className={className}>
+                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                    </svg>
+                ),
+                Printer: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                ),
+                ChevronRight: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                ),
+                Filter: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                ),
+                TrendingUp: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                ),
+                BookMarked: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                )
+            };
+
+            return icons[name] || (
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+                    <circle cx="12" cy="12" r="10" />
+                </svg>
+            );
+        };
+
+        // ==========================================
+        // DATA DUMMY AWAL (SIMULASI DATABASE)
+        // ==========================================
+        const INITIAL_BOOKS = [
+            { id: 'B001', code: 'BK-001', title: 'Laskar Pelangi', author: 'Andrea Hirata', publisher: 'Bentang Pustaka', year: '2005', isbn: '978-979-3062-79-1', category: 'Fiksi', shelf: 'Rak A1', stock: 5, status: 'Tersedia', coverColor: 'from-blue-500 to-teal-500' },
+            { id: 'B002', code: 'BK-002', title: 'Bumi Manusia', author: 'Pramoedya Ananta Toer', publisher: 'Lentera Dipantara', year: '1980', isbn: '978-979-97312-3-4', category: 'Sejarah', shelf: 'Rak B3', stock: 2, status: 'Tersedia', coverColor: 'from-amber-600 to-red-700' },
+            { id: 'B003', code: 'BK-003', title: 'Fisika Dasar XI', author: 'Bambang Ruwanto', publisher: 'Erlangga', year: '2018', isbn: '978-602-241-112-9', category: 'Pelajaran', shelf: 'Rak C2', stock: 12, status: 'Tersedia', coverColor: 'from-indigo-600 to-purple-600' },
+            { id: 'B004', code: 'BK-004', title: 'Filosofi Teras', author: 'Henry Manampiring', publisher: 'Kompas', year: '2019', isbn: '978-602-412-518-9', category: 'Self Improvement', shelf: 'Rak D1', stock: 0, status: 'Dipinjam Semua', coverColor: 'from-gray-700 to-slate-900' },
+            { id: 'B005', code: 'BK-005', title: 'Negeri 5 Menara', author: 'A. Fuadi', publisher: 'Gramedia', year: '2009', isbn: '978-979-22-4845-6', category: 'Fiksi', shelf: 'Rak A2', stock: 4, status: 'Tersedia', coverColor: 'from-emerald-500 to-green-700' },
+        ];
+
+        const INITIAL_CATEGORIES = [
+            { id: 'C1', name: 'Fiksi', desc: 'Buku cerita rekaan, novel, dan sastra fiktif' },
+            { id: 'C2', name: 'Sejarah', desc: 'Dokumentasi peristiwa masa lampau nasional & dunia' },
+            { id: 'C3', name: 'Pelajaran', desc: 'Buku teks kurikulum sekolah dasar dan menengah' },
+            { id: 'C4', name: 'Self Improvement', desc: 'Pengembangan diri, psikologi populer, dan motivasi' },
+            { id: 'C5', name: 'Sains & Teknologi', desc: 'Buku ilmiah populer, komputer, dan matematika' },
+        ];
+
+        const INITIAL_MEMBERS = [
+            { id: 'M001', name: 'Rian Hidayat', nisn: '0081234567', grade: 'XII IPA 1', gender: 'Laki-laki', phone: '081234567890', address: 'Jl. Merdeka No. 45', photo: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&h=120&q=80' },
+            { id: 'M002', name: 'Siti Aminah', nisn: '0089876543', grade: 'XI IPS 2', gender: 'Perempuan', phone: '085712345678', address: 'Gg. Kelinci No. 12', photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80' },
+            { id: 'M003', name: 'Budi Santoso', nisn: '0095556667', grade: 'X-3', gender: 'Laki-laki', phone: '082199887766', address: 'Perum Asri Blok C-8', photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80' },
+            { id: 'M004', name: 'Amelia Putri', nisn: '0084443332', grade: 'XII IPS 1', gender: 'Perempuan', phone: '089988776655', address: 'Jl. Melati No. 5', photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&h=120&q=80' },
+        ];
+
+        const INITIAL_VISITORS = [
+            { id: 'V001', memberId: 'M001', name: 'Rian Hidayat', grade: 'XII IPA 1', purpose: 'Membaca Buku', timestamp: '2026-05-19 08:30' },
+            { id: 'V002', memberId: 'M002', name: 'Siti Aminah', grade: 'XI IPS 2', purpose: 'Meminjam Buku', timestamp: '2026-05-19 09:15' },
+            { id: 'V003', memberId: '', name: 'Drs. H. Ahmad Fauzi', grade: 'Guru Sejarah', purpose: 'Riset Pembelajaran', timestamp: '2026-05-19 10:00' },
+            { id: 'V004', memberId: 'M003', name: 'Budi Santoso', grade: 'X-3', purpose: 'Mengerjakan Tugas', timestamp: '2026-05-19 11:20' },
+            { id: 'V005', memberId: 'M004', name: 'Amelia Putri', grade: 'XII IPS 1', purpose: 'Membaca Buku', timestamp: '2026-05-19 14:05' },
+        ];
+
+        const INITIAL_BORROWINGS = [
+            { id: 'T001', memberId: 'M001', memberName: 'Rian Hidayat', bookId: 'B001', bookTitle: 'Laskar Pelangi', borrowDate: '2026-05-10', dueDate: '2026-05-17', returnDate: '2026-05-16', status: 'Kembali', fine: 0 },
+            { id: 'T002', memberId: 'M002', memberName: 'Siti Aminah', bookId: 'B002', bookTitle: 'Bumi Manusia', borrowDate: '2026-05-12', dueDate: '2026-05-19', returnDate: '', status: 'Dipinjam', fine: 0 },
+            { id: 'T003', memberId: 'M003', memberName: 'Budi Santoso', bookId: 'B004', bookTitle: 'Filosofi Teras', borrowDate: '2026-05-05', dueDate: '2026-05-12', returnDate: '', status: 'Terlambat', fine: 14000 },
+        ];
+
+        function App() {
+            // ==========================================
+            // STATE MANAGEMENT
+            // ==========================================
+            const [theme, setTheme] = useState('light');
+            const [currentRole, setCurrentRole] = useState('Admin'); // Admin, Petugas, Guru, Siswa
+            const [activeMenu, setActiveMenu] = useState('Dashboard');
+            const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+            const [toast, setToast] = useState(null);
+            
+            // Custom Confirmation Modal
+            const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+            const fileInputRef = useRef(null);
+
+            // Database State
+            const [books, setBooks] = useState(INITIAL_BOOKS);
+            const [categories, setCategories] = useState(INITIAL_CATEGORIES);
+            const [members, setMembers] = useState(INITIAL_MEMBERS);
+            const [visitors, setVisitors] = useState(INITIAL_VISITORS);
+            const [borrowings, setBorrowings] = useState(INITIAL_BORROWINGS);
+            const [settings, setSettings] = useState({
+                schoolName: 'SMA Negeri 1 Harapan Bangsa',
+                address: 'Jl. Pendidikan No. 1, Kota Cerdas',
+                finePerDay: 2000,
+                maxBorrowDays: 7,
+                maxBorrowBooks: 3,
+                classes: ['X-1', 'X-2', 'X-3', 'XI IPA 1', 'XI IPS 1', 'XI IPS 2', 'XII IPA 1', 'XII IPS 1'],
+            });
+
+            // Modal & Edit Form States
+            const [modalType, setModalType] = useState(null); // 'addBook', 'editBook', 'addCategory', 'editCategory', 'addMember', 'editMember', 'addBorrow', 'scanQR', 'cardMember'
+            const [selectedItem, setSelectedItem] = useState(null);
+            const [searchGlobal, setSearchGlobal] = useState('');
+            const [newClassInput, setNewClassInput] = useState('');
+
+            // Form inputs
+            const [bookForm, setBookForm] = useState({ id: '', code: '', title: '', author: '', publisher: '', year: '', isbn: '', category: 'Fiksi', shelf: 'Rak A1', stock: 1, coverColor: 'from-blue-500 to-teal-500' });
+            const [categoryForm, setCategoryForm] = useState({ id: '', name: '', desc: '' });
+            const [memberForm, setMemberForm] = useState({ id: '', name: '', nisn: '', grade: '', gender: 'Laki-laki', phone: '', address: '', photo: '' });
+            const [borrowForm, setBorrowForm] = useState({ memberId: '', bookId: '', borrowDate: new Date().toISOString().split('T')[0] });
+            const [visitorInput, setVisitorInput] = useState({ memberId: '', name: '', grade: '', purpose: 'Membaca Buku' });
+
+            // Realtime search filters per page
+            const [searchBook, setSearchBook] = useState('');
+            const [filterCategory, setFilterCategory] = useState('Semua');
+            const [searchMember, setSearchMember] = useState('');
+
+            // System Date Simulation
+            const todayStr = '2026-05-19';
+
+            // Dark Mode Class Changer
+            useEffect(() => {
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }, [theme]);
+
+            // ==========================================
+            // UTILITIES & HELPER FUNCTIONS
+            // ==========================================
+            const showToast = (message, type = 'success') => {
+                setToast({ message, type });
+                setTimeout(() => setToast(null), 3000);
+            };
+
+            const toggleTheme = () => {
+                setTheme(prev => prev === 'light' ? 'dark' : 'light');
+                showToast(`Beralih ke Mode ${theme === 'light' ? 'Gelap' : 'Terang'}`, 'info');
+            };
+
+            const handleAddClass = () => {
+                if (!newClassInput.trim()) return;
+                if (settings.classes.includes(newClassInput.trim())) {
+                    showToast('Kelas sudah ada di daftar!', 'warning');
+                    return;
+                }
+                setSettings(prev => ({ ...prev, classes: [...prev.classes, newClassInput.trim()] }));
+                setNewClassInput('');
+                showToast('Kelas baru ditambahkan', 'success');
+            };
+
+            const handleDeleteClass = (clsToRemove) => {
+                setSettings(prev => ({ ...prev, classes: prev.classes.filter(c => c !== clsToRemove) }));
+                showToast('Kelas dihapus', 'info');
+            };
+
+            // Hitung Denda Otomatis Terlambat
+            useEffect(() => {
+                const updatedBorrowings = borrowings.map(b => {
+                    if (b.status === 'Dipinjam' || b.status === 'Terlambat') {
+                        const dueDateObj = new Date(b.dueDate);
+                        const todayObj = new Date(todayStr);
+                        if (todayObj > dueDateObj) {
+                            const diffTime = Math.abs(todayObj - dueDateObj);
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            const calculatedFine = diffDays * settings.finePerDay;
+                            return { ...b, fine: calculatedFine, status: 'Terlambat' };
+                        }
+                    }
+                    return b;
+                });
+
+                const hasChanges = JSON.stringify(updatedBorrowings) !== JSON.stringify(borrowings);
+                if (hasChanges) {
+                    setBorrowings(updatedBorrowings);
+                }
+            }, [settings.finePerDay]);
+
+            // ==========================================
+            // DATA OPERATIONS (CRUD)
+            // ==========================================
+
+            // Buku
+            const handleSaveBook = (e) => {
+                e.preventDefault();
+                if (modalType === 'addBook') {
+                    const newBook = {
+                        ...bookForm,
+                        id: `B${String(books.length + 1).padStart(3, '0')}`,
+                        status: bookForm.stock > 0 ? 'Tersedia' : 'Habis',
+                    };
+                    setBooks([newBook, ...books]);
+                    showToast('Buku berhasil ditambahkan!', 'success');
+                } else {
+                    setBooks(books.map(b => b.id === bookForm.id ? { ...bookForm, status: bookForm.stock > 0 ? 'Tersedia' : 'Habis' } : b));
+                    showToast('Data buku berhasil diperbarui!', 'success');
+                }
+                setModalType(null);
+            };
+
+            const handleDeleteBook = (id) => {
+                setConfirmDialog({
+                    isOpen: true,
+                    title: 'Hapus Data Buku',
+                    message: 'Apakah Anda yakin ingin menghapus buku ini secara permanen? Data yang dihapus tidak dapat dikembalikan.',
+                    onConfirm: () => {
+                        setBooks(books.filter(b => b.id !== id));
+                        showToast('Buku berhasil dihapus dari sistem', 'success');
+                    }
+                });
+            };
+
+            // Kategori
+            const handleSaveCategory = (e) => {
+                e.preventDefault();
+                if (modalType === 'addCategory') {
+                    const newCat = { ...categoryForm, id: `C${categories.length + 1}` };
+                    setCategories([...categories, newCat]);
+                    showToast('Kategori baru berhasil ditambahkan!', 'success');
+                } else {
+                    setCategories(categories.map(c => c.id === categoryForm.id ? categoryForm : c));
+                    showToast('Kategori berhasil diperbarui!', 'success');
+                }
+                setModalType(null);
+            };
+
+            // Anggota
+            const handleSaveMember = (e) => {
+                e.preventDefault();
+                if (modalType === 'addMember') {
+                    const newMem = {
+                        ...memberForm,
+                        id: `M${String(members.length + 1).padStart(3, '0')}`,
+                        photo: memberForm.photo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&h=120&q=80'
+                    };
+                    setMembers([newMem, ...members]);
+                    showToast('Anggota baru berhasil bergabung!', 'success');
+                } else {
+                    setMembers(members.map(m => m.id === memberForm.id ? memberForm : m));
+                    showToast('Data anggota berhasil diperbarui!', 'success');
+                }
+                setModalType(null);
+            };
+
+            const handleDeleteMember = (id) => {
+                setConfirmDialog({
+                    isOpen: true,
+                    title: 'Hapus Data Anggota',
+                    message: 'Apakah Anda yakin ingin mencabut keanggotaan siswa/guru ini? Riwayat peminjaman mungkin akan terdampak.',
+                    onConfirm: () => {
+                        setMembers(members.filter(m => m.id !== id));
+                        showToast('Data anggota berhasil dihapus', 'success');
+                    }
+                });
+            };
+
+            // Import Excel (Simulasi)
+            const handleImportExcel = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                showToast(`Membaca file ${file.name}...`, 'info');
+                
+                setTimeout(() => {
+                    const newMember1 = { id: `M${String(members.length + 1).padStart(3, '0')}`, name: 'Siswa Import Baru', nisn: '0088997766', grade: 'X-1', gender: 'Laki-laki', phone: '081122334455', address: 'Hasil Import Excel', photo: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&h=120&q=80' };
+                    const newMember2 = { id: `M${String(members.length + 2).padStart(3, '0')}`, name: 'Siswi Import Baru', nisn: '0088997755', grade: 'X-2', gender: 'Perempuan', phone: '085544332211', address: 'Hasil Import Excel', photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80' };
+                    
+                    setMembers(prev => [newMember1, newMember2, ...prev]);
+                    showToast('Data excel berhasil diimpor!', 'success');
+                    
+                    if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                    }
+                }, 1500);
+            };
+
+            // Tambah Peminjaman
+            const handleSaveBorrowing = (e) => {
+                e.preventDefault();
+                const targetBook = books.find(b => b.id === borrowForm.bookId);
+                const targetMember = members.find(m => m.id === borrowForm.memberId);
+
+                if (!targetBook || !targetMember) {
+                    showToast('Buku atau Anggota tidak ditemukan!', 'error');
+                    return;
+                }
+
+                if (targetBook.stock <= 0) {
+                    showToast('Buku sedang habis/kosong!', 'warning');
+                    return;
+                }
+
+                const borrowDateObj = new Date(borrowForm.borrowDate);
+                const dueDateObj = new Date(borrowDateObj);
+                dueDateObj.setDate(dueDateObj.getDate() + settings.maxBorrowDays);
+                const dueDateStr = dueDateObj.toISOString().split('T')[0];
+
+                const newBorrow = {
+                    id: `T${String(borrowings.length + 1).padStart(3, '0')}`,
+                    memberId: targetMember.id,
+                    memberName: targetMember.name,
+                    bookId: targetBook.id,
+                    bookTitle: targetBook.title,
+                    borrowDate: borrowForm.borrowDate,
+                    dueDate: dueDateStr,
+                    returnDate: '',
+                    status: 'Dipinjam',
+                    fine: 0
+                };
+
+                setBorrowings([newBorrow, ...borrowings]);
+                setBooks(books.map(b => b.id === targetBook.id ? { ...b, stock: b.stock - 1 } : b));
+                showToast('Peminjaman sukses dicatat!', 'success');
+                setModalType(null);
+            };
+
+            // Proses Pengembalian Buku
+            const handleReturnBook = (borrowId) => {
+                const borrow = borrowings.find(b => b.id === borrowId);
+                if (!borrow) return;
+
+                setBorrowings(borrowings.map(b => {
+                    if (b.id === borrowId) {
+                        return {
+                            ...b,
+                            returnDate: todayStr,
+                            status: 'Kembali'
+                        };
+                    }
+                    return b;
+                }));
+
+                setBooks(books.map(b => b.id === borrow.bookId ? { ...b, stock: b.stock + 1 } : b));
+                showToast(`Buku "${borrow.bookTitle}" telah dikembalikan.`, 'success');
+            };
+
+            // Buku Tamu Pengunjung
+            const handleAddVisitor = (e) => {
+                e.preventDefault();
+                let name = visitorInput.name;
+                let grade = visitorInput.grade;
+
+                if (visitorInput.memberId) {
+                    const match = members.find(m => m.id === visitorInput.memberId || m.nisn === visitorInput.memberId);
+                    if (match) {
+                        name = match.name;
+                        grade = match.grade;
+                    } else {
+                        showToast('ID Anggota / NISN tidak valid!', 'error');
+                        return;
+                    }
+                }
+
+                if (!name) {
+                    showToast('Isi nama atau ID Anggota!', 'warning');
+                    return;
+                }
+
+                const newVisitor = {
+                    id: `V${String(visitors.length + 1).padStart(3, '0')}`,
+                    memberId: visitorInput.memberId,
+                    name,
+                    grade,
+                    purpose: visitorInput.purpose,
+                    timestamp: `${todayStr} ${new Date().toTimeString().split(' ')[0].substring(0, 5)}`
+                };
+
+                setVisitors([newVisitor, ...visitors]);
+                setVisitorInput({ memberId: '', name: '', grade: '', purpose: 'Membaca Buku' });
+                showToast('Kunjungan Anda berhasil dicatat!', 'success');
+            };
+
+            // ==========================================
+            // REAL DOWNLOAD EXCEL & PDF LOGIC
+            // ==========================================
+
+            const exportToExcel = (reportType) => {
+                if (!window.XLSX) {
+                    showToast('Pustaka pengolah Excel sedang memuat. Coba lagi dalam beberapa saat.', 'warning');
+                    return;
+                }
+
+                let rawData = [];
+                let fileName = '';
+
+                if (reportType === 'Peminjaman') {
+                    rawData = borrowings.map(b => ({
+                        'Kode Transaksi': b.id,
+                        'ID Anggota': b.memberId,
+                        'Nama Anggota': b.memberName,
+                        'Judul Buku': b.bookTitle,
+                        'Tanggal Pinjam': b.borrowDate,
+                        'Batas Kembali': b.dueDate,
+                        'Tanggal Kembali': b.returnDate || 'Belum Kembali',
+                        'Status': b.status,
+                        'Denda (Rp)': b.fine
+                    }));
+                    fileName = 'Laporan_Peminjaman_Sirkulasi.xlsx';
+                } else if (reportType === 'Pengunjung') {
+                    rawData = visitors.map(v => ({
+                        'ID Kunjungan': v.id,
+                        'ID Anggota': v.memberId || 'Tamu Umum',
+                        'Nama': v.name,
+                        'Kelas/Jabatan': v.grade,
+                        'Tujuan': v.purpose,
+                        'Waktu Masuk': v.timestamp
+                    }));
+                    fileName = 'Laporan_Pengunjung_Harian.xlsx';
+                } else if (reportType === 'Inventori') {
+                    rawData = books.map(b => ({
+                        'ID Buku': b.id,
+                        'Kode Buku': b.code,
+                        'Judul': b.title,
+                        'Penulis': b.author,
+                        'Penerbit': b.publisher,
+                        'Tahun': b.year,
+                        'ISBN': b.isbn,
+                        'Lokasi Rak': b.shelf,
+                        'Stok': b.stock,
+                        'Status': b.stock > 0 ? 'Tersedia' : 'Habis'
+                    }));
+                    fileName = 'Laporan_Katalog_Inventori_Buku.xlsx';
+                }
+
+                const worksheet = window.XLSX.utils.json_to_sheet(rawData);
+                const workbook = window.XLSX.utils.book_new();
+                window.XLSX.utils.book_append_sheet(workbook, worksheet, reportType);
+                window.XLSX.writeFile(workbook, fileName);
+                showToast(`Sukses mendownload ${fileName}`, 'success');
+            };
+
+            const exportToPDF = (reportType) => {
+                if (!window.jspdf || !window.jspdf.jsPDF) {
+                    showToast('Pustaka pengolah PDF sedang memuat. Coba lagi dalam beberapa saat.', 'warning');
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('l', 'pt', 'a4');
+
+                // Judul PDF
+                doc.setFontSize(18);
+                doc.setTextColor(15, 23, 42); // Navy Blue
+                doc.text(`SMART LIBRARY - LAPORAN ${reportType.toUpperCase()}`, 40, 45);
+                
+                doc.setFontSize(10);
+                doc.setTextColor(100, 116, 139); // Gray Text
+                doc.text(`Sekolah: ${settings.schoolName} | Tanggal Cetak: ${todayStr}`, 40, 65);
+
+                let columns = [];
+                let rows = [];
+
+                if (reportType === 'Peminjaman') {
+                    columns = ['Kode', 'ID Anggota', 'Nama Anggota', 'Judul Buku', 'Tgl Pinjam', 'Batas Kembali', 'Tgl Kembali', 'Status', 'Denda'];
+                    rows = borrowings.map(b => [
+                        b.id,
+                        b.memberId,
+                        b.memberName,
+                        b.bookTitle,
+                        b.borrowDate,
+                        b.dueDate,
+                        b.returnDate || 'Belum',
+                        b.status,
+                        `Rp ${b.fine.toLocaleString('id-ID')}`
+                    ]);
+                } else if (reportType === 'Pengunjung') {
+                    columns = ['ID', 'ID Anggota', 'Nama Pengunjung', 'Kelas/Unit', 'Tujuan', 'Waktu Masuk'];
+                    rows = visitors.map(v => [
+                        v.id,
+                        v.memberId || 'Tamu Umum',
+                        v.name,
+                        v.grade,
+                        v.purpose,
+                        v.timestamp
+                    ]);
+                } else if (reportType === 'Inventori') {
+                    columns = ['Kode', 'Judul Buku', 'Penulis', 'Penerbit', 'Tahun', 'ISBN', 'Rak', 'Stok'];
+                    rows = books.map(b => [
+                        b.code,
+                        b.title,
+                        b.author,
+                        b.publisher,
+                        b.year,
+                        b.isbn,
+                        b.shelf,
+                        b.stock
+                    ]);
+                }
+
+                doc.autoTable({
+                    head: [columns],
+                    body: rows,
+                    startY: 85,
+                    theme: 'grid',
+                    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
+                    alternateRowStyles: { fillColor: [248, 250, 252] },
+                    styles: { fontSize: 9, cellPadding: 8 }
+                });
+
+                doc.save(`Laporan_${reportType}_${todayStr}.pdf`);
+                showToast(`Sukses mendownload Laporan_${reportType}.pdf`, 'success');
+            };
+
+            // Filter Buku
+            const filteredBooks = useMemo(() => {
+                return books.filter(b => {
+                    const matchSearch = b.title.toLowerCase().includes(searchBook.toLowerCase()) || 
+                                        b.author.toLowerCase().includes(searchBook.toLowerCase()) ||
+                                        b.isbn.includes(searchBook);
+                    const matchCategory = filterCategory === 'Semua' || b.category === filterCategory;
+                    return matchSearch && matchCategory;
+                });
+            }, [books, searchBook, filterCategory]);
+
+            // Filter Anggota
+            const filteredMembers = useMemo(() => {
+                return members.filter(m => 
+                    m.name.toLowerCase().includes(searchMember.toLowerCase()) ||
+                    m.nisn.includes(searchMember) ||
+                    m.grade.toLowerCase().includes(searchMember.toLowerCase())
+                );
+            }, [members, searchMember]);
+
+            // Statistik & Laporan Perhitungan
+            const totalBooks = books.reduce((acc, curr) => acc + curr.stock, 0);
+            const activeLoans = borrowings.filter(b => b.status === 'Dipinjam' || b.status === 'Terlambat').length;
+            const lateLoans = borrowings.filter(b => b.status === 'Terlambat').length;
+            const totalFines = borrowings.reduce((acc, curr) => acc + (curr.fine || 0), 0);
+
+            const openEditBook = (book) => {
+                setBookForm(book);
+                setModalType('editBook');
+            };
+
+            const openAddBook = () => {
+                setBookForm({ id: '', code: `BK-00${books.length + 1}`, title: '', author: '', publisher: '', year: '2025', isbn: '', category: 'Fiksi', shelf: 'Rak A1', stock: 5, coverColor: 'from-blue-600 to-indigo-700' });
+                setModalType('addBook');
+            };
+
+            const openAddMember = () => {
+                setMemberForm({ id: '', name: '', nisn: '', grade: settings.classes[0] || '', gender: 'Laki-laki', phone: '', address: '', photo: '' });
+                setModalType('addMember');
+            };
+
+            const openEditMember = (member) => {
+                setMemberForm(member);
+                setModalType('editMember');
+            };
+
+            const showMemberCard = (member) => {
+                setSelectedItem(member);
+                setModalType('cardMember');
+            };
+
+            // Hak Akses Guard
+            const hasAccess = (requiredRoles) => {
+                return requiredRoles.includes(currentRole);
+            };
+
+            return (
+                <div className={`min-h-screen font-sans transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+                    
+                    {/* TOAST NOTIFICATION */}
+                    {toast && (
+                        <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl animate-bounce text-white font-semibold text-sm transition-all duration-300 ${
+                            toast.type === 'success' ? 'bg-emerald-600 shadow-emerald-600/20' : 
+                            toast.type === 'warning' ? 'bg-amber-500 shadow-amber-500/20' : 
+                            toast.type === 'error' ? 'bg-rose-600 shadow-rose-600/20' : 
+                            'bg-blue-600 shadow-blue-600/20'
+                        }`}>
+                            <Icon name={toast.type === 'success' ? 'Check' : toast.type === 'warning' ? 'AlertTriangle' : toast.type === 'error' ? 'X' : 'Info'} className="w-5 h-5 flex-shrink-0" />
+                            <span>{toast.message}</span>
+                        </div>
+                    )}
+
+                    <div className="flex h-screen overflow-hidden">
+                        
+                        {/* SIDEBAR MODERN (NAVY THEME) */}
+                        <aside className={`bg-slate-900 text-slate-200 flex flex-col transition-all duration-300 z-30 relative border-r border-slate-800
+                            ${sidebarCollapsed ? 'w-20' : 'w-72'}`}>
+                            
+                            {/* Brand/Logo */}
+                            <div className="h-20 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-950">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className="p-2.5 rounded-xl bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 flex-shrink-0">
+                                        <Icon name="BookOpen" className="w-6 h-6 font-bold" />
+                                    </div>
+                                    {!sidebarCollapsed && (
+                                        <div className="whitespace-nowrap">
+                                            <h1 className="font-extrabold text-base tracking-wider text-white">SMART LIBRARY</h1>
+                                            <span className="text-[10px] text-amber-500 font-bold uppercase tracking-widest">Sistem Sekolah</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Navigation Menu */}
+                            <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5 scrollbar-thin">
+                                <div className={`px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider ${sidebarCollapsed ? 'text-center' : ''}`}>
+                                    {sidebarCollapsed ? '•' : 'Main Menu'}
+                                </div>
+
+                                {[
+                                    { name: 'Dashboard', icon: 'BarChart2', roles: ['Admin', 'Petugas', 'Guru', 'Siswa'] },
+                                    { name: 'Data Buku', icon: 'BookOpen', roles: ['Admin', 'Petugas', 'Guru', 'Siswa'] },
+                                    { name: 'Kategori Buku', icon: 'BookMarked', roles: ['Admin', 'Petugas'] },
+                                    { name: 'Data Anggota', icon: 'Users', roles: ['Admin', 'Petugas', 'Guru'] },
+                                    { name: 'Pengunjung', icon: 'Award', roles: ['Admin', 'Petugas', 'Guru', 'Siswa'] },
+                                    { name: 'Peminjaman', icon: 'ArrowLeftRight', roles: ['Admin', 'Petugas'] },
+                                    { name: 'Laporan & Ekspor', icon: 'FileText', roles: ['Admin', 'Petugas', 'Guru'] },
+                                    { name: 'Statistik Literasi', icon: 'TrendingUp', roles: ['Admin', 'Petugas', 'Guru', 'Siswa'] },
+                                    { name: 'Pengaturan', icon: 'Settings', roles: ['Admin'] },
+                                ].map((item) => {
+                                    if (!hasAccess(item.roles)) return null;
+                                    const isActive = activeMenu === item.name;
+                                    return (
+                                        <button
+                                            key={item.name}
+                                            onClick={() => setActiveMenu(item.name)}
+                                            className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 group relative
+                                                ${isActive 
+                                                    ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 font-bold' 
+                                                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'}`}
+                                        >
+                                            <Icon name={item.icon} className={`w-5 h-5 flex-shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-slate-950' : 'text-slate-400'}`} />
+                                            {!sidebarCollapsed && <span className="truncate">{item.name}</span>}
+                                            
+                                            {/* Tooltip on collapse */}
+                                            {sidebarCollapsed && (
+                                                <div className="absolute left-24 bg-slate-950 text-white text-xs px-3 py-2 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl border border-slate-800 z-50">
+                                                    {item.name}
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </nav>
+
+                            {/* Role Switcher */}
+                            <div className="p-4 border-t border-slate-800 bg-slate-950/60">
+                                {!sidebarCollapsed && (
+                                    <div className="mb-3">
+                                        <label className="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Pilih Hak Akses Simulator:</label>
+                                        <div className="grid grid-cols-2 gap-1.5 text-xs">
+                                            {['Admin', 'Petugas', 'Guru', 'Siswa'].map((r) => (
+                                                <button
+                                                    key={r}
+                                                    onClick={() => {
+                                                        setCurrentRole(r);
+                                                        showToast(`Beralih ke peran: ${r}`, 'info');
+                                                    }}
+                                                    className={`py-1.5 px-2 rounded-lg font-medium transition-all duration-200 border
+                                                        ${currentRole === r 
+                                                            ? 'bg-slate-800 text-amber-500 border-amber-500/30' 
+                                                            : 'bg-transparent text-slate-400 border-transparent hover:bg-slate-900'}`}
+                                                >
+                                                    {r}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-amber-500/40 flex items-center justify-center font-bold text-amber-500">
+                                        {currentRole[0]}
+                                    </div>
+                                    {!sidebarCollapsed && (
+                                        <div className="overflow-hidden">
+                                            <p className="text-sm font-bold text-white truncate">Pustakawan</p>
+                                            <p className="text-xs text-amber-500 font-semibold flex items-center gap-1">
+                                                <Icon name="Shield" className="w-3 h-3" /> {currentRole}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </aside>
+
+                        {/* MAIN CONTENT AREA */}
+                        <main className="flex-1 flex flex-col overflow-hidden">
+                            
+                            {/* TOPBAR */}
+                            <header className={`h-20 border-b flex items-center justify-between px-8 z-20 backdrop-blur-md
+                                ${theme === 'dark' ? 'bg-slate-950/80 border-slate-900' : 'bg-white/80 border-slate-200'}`}>
+                                
+                                <div className="flex items-center gap-4">
+                                    <button 
+                                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                                        className={`p-2 rounded-xl transition-colors ${theme === 'dark' ? 'hover:bg-slate-900 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-600'}`}
+                                    >
+                                        <Icon name="Menu" className="w-6 h-6" />
+                                    </button>
+                                    
+                                    <div className="relative max-w-xs md:max-w-md hidden sm:block">
+                                        <Icon name="Search" className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input 
+                                            type="text" 
+                                            placeholder="Cari buku, anggota, atau transaksi secara cepat..."
+                                            value={searchGlobal}
+                                            onChange={(e) => setSearchGlobal(e.target.value)}
+                                            className={`w-72 pl-11 pr-4 py-2 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all border
+                                                ${theme === 'dark' 
+                                                    ? 'bg-slate-900 border-slate-800 text-white focus:bg-slate-800' 
+                                                    : 'bg-slate-100 border-slate-200 focus:bg-white'}`}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <span className={`text-xs px-3 py-1.5 rounded-full font-semibold border hidden lg:inline-flex items-center gap-1.5
+                                        ${theme === 'dark' ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                                        <Icon name="Calendar" className="w-3.5 h-3.5 text-amber-500" /> Simulasi Hari: <strong>19 Mei 2026</strong>
+                                    </span>
+
+                                    {/* Theme Toggle */}
+                                    <button 
+                                        onClick={toggleTheme}
+                                        className={`p-3 rounded-xl transition-all duration-200 ${theme === 'dark' ? 'bg-slate-900 hover:bg-slate-800 text-amber-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                                        title="Ganti Tema"
+                                    >
+                                        <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} className="w-5 h-5" />
+                                    </button>
+
+                                    <div className="h-8 w-[1px] bg-slate-300 dark:bg-slate-800 mx-1"></div>
+
+                                    {/* User Profil */}
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-right hidden md:block">
+                                            <p className="text-sm font-bold">{settings.schoolName}</p>
+                                            <p className="text-[10px] text-amber-500 font-semibold uppercase tracking-widest">{currentRole}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </header>
+
+                            {/* PAGE INNER VIEWPORT */}
+                            <div className="flex-1 overflow-y-auto p-8 scrollbar-thin">
+                                
+                                {/* VIEW 1: DASHBOARD */}
+                                {activeMenu === 'Dashboard' && (
+                                    <div className="space-y-8 animate-fadeIn">
+                                        {/* Welcome Card */}
+                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 p-8 rounded-3xl text-white shadow-xl relative overflow-hidden border border-slate-800">
+                                            <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl"></div>
+                                            <div className="relative z-10">
+                                                <span className="text-amber-400 font-bold uppercase tracking-widest text-xs">Pusat Kendali Perpustakaan</span>
+                                                <h2 className="text-2xl md:text-3xl font-extrabold mt-1">Selamat Datang di Smart Library</h2>
+                                                <p className="text-slate-400 text-sm mt-2 max-w-xl">
+                                                    Kelola buku, peminjaman, tamu perpustakaan, hingga pantau statistik literasi sekolah secara modern dan serba otomatis.
+                                                </p>
+                                            </div>
+                                            <div className="flex gap-3 relative z-10 w-full md:w-auto">
+                                                {hasAccess(['Admin', 'Petugas']) && (
+                                                    <button 
+                                                        onClick={() => setModalType('addBorrow')}
+                                                        className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-3 rounded-xl font-bold transition-all duration-200 shadow-lg shadow-amber-500/10 text-sm"
+                                                    >
+                                                        <Icon name="ArrowLeftRight" className="w-4 h-4" /> Transaksi Baru
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    onClick={() => {
+                                                        setModalType(null);
+                                                        setVisitorInput({ memberId: '', name: '', grade: '', purpose: 'Membaca Buku' });
+                                                        setActiveMenu('Pengunjung');
+                                                    }}
+                                                    className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-xl font-bold transition-all duration-200 border border-slate-700 text-sm"
+                                                >
+                                                    <Icon name="Award" className="w-4 h-4" /> Buku Tamu Digital
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Stats Cards */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            <div className={`p-6 rounded-2xl border transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 ${theme === 'dark' ? 'bg-slate-900 border-slate-800/80 hover:border-blue-500/50' : 'bg-white border-slate-200 shadow-md hover:shadow-lg'}`}>
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Eksemplar</span>
+                                                        <h3 className="text-3xl font-black mt-2">{totalBooks}</h3>
+                                                        <p className="text-xs text-blue-500 font-bold mt-1 flex items-center gap-1">{books.length} Judul Buku</p>
+                                                    </div>
+                                                    <div className="p-3.5 rounded-xl bg-blue-500/10 text-blue-500">
+                                                        <Icon name="BookOpen" className="w-6 h-6" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className={`p-6 rounded-2xl border transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 ${theme === 'dark' ? 'bg-slate-900 border-slate-800/80 hover:border-emerald-500/50' : 'bg-white border-slate-200 shadow-md hover:shadow-lg'}`}>
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Anggota Terdaftar</span>
+                                                        <h3 className="text-3xl font-black mt-2">{members.length}</h3>
+                                                        <p className="text-xs text-emerald-500 font-bold mt-1">Siswa & Guru Tergabung</p>
+                                                    </div>
+                                                    <div className="p-3.5 rounded-xl bg-emerald-500/10 text-emerald-500">
+                                                        <Icon name="Users" className="w-6 h-6" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className={`p-6 rounded-2xl border transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 ${theme === 'dark' ? 'bg-slate-900 border-slate-800/80 hover:border-amber-500/50' : 'bg-white border-slate-200 shadow-md hover:shadow-lg'}`}>
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sedang Dipinjam</span>
+                                                        <h3 className="text-3xl font-black mt-2">{activeLoans}</h3>
+                                                        <p className="text-xs text-amber-500 font-bold mt-1">Belum Dikembalikan</p>
+                                                    </div>
+                                                    <div className="p-3.5 rounded-xl bg-amber-500/10 text-amber-500">
+                                                        <Icon name="ArrowLeftRight" className="w-6 h-6" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className={`p-6 rounded-2xl border transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 ${theme === 'dark' ? 'bg-slate-900 border-slate-800/80 hover:border-rose-500/50' : 'bg-white border-slate-200 shadow-md hover:shadow-lg'}`}>
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Keterlambatan</span>
+                                                        <h3 className="text-3xl font-black mt-2">{lateLoans}</h3>
+                                                        <p className="text-xs text-rose-500 font-bold mt-1">Total Denda: Rp {totalFines.toLocaleString('id-ID')}</p>
+                                                    </div>
+                                                    <div className="p-3.5 rounded-xl bg-rose-500/10 text-rose-500">
+                                                        <Icon name="Clock" className="w-6 h-6" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Charts Mock & Popular Books */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                            <div className={`lg:col-span-2 p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
+                                                <div className="flex justify-between items-center mb-6">
+                                                    <div>
+                                                        <h4 className="font-bold text-lg">Statistik Kunjungan Harian</h4>
+                                                        <p className="text-slate-400 text-xs mt-0.5">Ringkasan grafik pengunjung seminggu terakhir</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg font-medium">
+                                                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Pengunjung
+                                                    </div>
+                                                </div>
+
+                                                <div className="h-64 flex items-end justify-between gap-4 pt-4 border-b border-slate-100 dark:border-slate-800 px-4">
+                                                    {[
+                                                        { day: 'Sen', visits: 45 },
+                                                        { day: 'Sel', visits: 62 },
+                                                        { day: 'Rab', visits: 85 },
+                                                        { day: 'Kam', visits: 70 },
+                                                        { day: 'Jum', visits: 52 },
+                                                        { day: 'Sab', visits: 30 },
+                                                        { day: 'Ming', visits: 10 },
+                                                    ].map((d) => (
+                                                        <div key={d.day} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer relative">
+                                                            <div 
+                                                                style={{ height: `${(d.visits / 100) * 160}px` }}
+                                                                className="w-full rounded-t-lg bg-gradient-to-t from-slate-800 to-amber-500 group-hover:from-slate-700 group-hover:to-amber-400 transition-all duration-300 relative shadow-md shadow-amber-500/10"
+                                                            ></div>
+                                                            <span className="text-xs font-semibold text-slate-400 pt-2">{d.day}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
+                                                <div className="flex justify-between items-center mb-5">
+                                                    <h4 className="font-bold text-lg">Buku Terpopuler</h4>
+                                                    <Icon name="Award" className="w-5 h-5 text-amber-500" />
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    {books.slice(0, 4).map((book, idx) => (
+                                                        <div key={book.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-all duration-200">
+                                                            <div className={`w-10 h-14 rounded-md bg-gradient-to-br ${book.coverColor} flex flex-col justify-between p-1 text-white shadow-sm flex-shrink-0`}>
+                                                                <span className="text-[6px] font-bold tracking-widest uppercase">SMART</span>
+                                                                <Icon name="BookOpen" className="w-4 h-4 self-center my-auto" />
+                                                            </div>
+                                                            <div className="overflow-hidden flex-1">
+                                                                <h5 className="font-bold text-sm truncate">{book.title}</h5>
+                                                                <p className="text-xs text-slate-400 truncate">{book.author}</p>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-xs font-extrabold text-amber-500 bg-amber-500/10 px-2 py-1 rounded-lg">#{idx + 1}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* VIEW 2: DATA BUKU */}
+                                {activeMenu === 'Data Buku' && (
+                                    <div className="space-y-6 animate-fadeIn">
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                            <div>
+                                                <h2 className="text-2xl font-black">Manajemen Katalog Buku</h2>
+                                                <p className="text-slate-400 text-sm mt-1">Daftar buku fisik & e-book yang terdaftar di perpustakaan sekolah</p>
+                                            </div>
+                                            {hasAccess(['Admin', 'Petugas']) && (
+                                                <button onClick={openAddBook} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-3 rounded-xl font-bold transition-all text-sm shadow-lg shadow-amber-500/10">
+                                                    <Icon name="Plus" className="w-4.5 h-4.5" /> Tambah Buku Baru
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className={`p-4 rounded-xl border flex flex-col md:flex-row gap-4 items-center justify-between ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                            <div className="relative w-full md:w-80">
+                                                <Icon name="Search" className="w-4.5 h-4.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                <input 
+                                                    type="text"
+                                                    placeholder="Cari judul, penulis, ISBN..."
+                                                    value={searchBook}
+                                                    onChange={(e) => setSearchBook(e.target.value)}
+                                                    className={`w-full pl-10 pr-4 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                                                <span className="text-xs text-slate-400 font-bold flex items-center gap-1"><Icon name="Filter" className="w-3.5 h-3.5" /> Kategori:</span>
+                                                <button onClick={() => setFilterCategory('Semua')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterCategory === 'Semua' ? 'bg-amber-500 text-slate-950' : 'bg-slate-100 dark:bg-slate-800'}`}>Semua</button>
+                                                {categories.map((c) => (
+                                                    <button key={c.id} onClick={() => setFilterCategory(c.name)} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterCategory === c.name ? 'bg-amber-500 text-slate-950' : 'bg-slate-100 dark:bg-slate-800'}`}>{c.name}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
+                                            {filteredBooks.map((book) => (
+                                                <div key={book.id} className={`rounded-xl border overflow-hidden flex flex-col justify-between transition-all duration-300 group hover:-translate-y-1 hover:shadow-lg ${theme === 'dark' ? 'bg-slate-900 border-slate-800 hover:border-amber-500/40' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                                    <div className={`h-32 bg-gradient-to-br ${book.coverColor} relative flex flex-col justify-between p-3 text-white`}>
+                                                        <div className="flex justify-between items-start">
+                                                            <span className="text-[8px] font-black tracking-widest bg-white/20 px-1.5 py-0.5 rounded-full uppercase truncate max-w-[50%]">{book.shelf}</span>
+                                                            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase ${book.stock > 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}>{book.stock > 0 ? 'Tersedia' : 'Habis'}</span>
+                                                        </div>
+                                                        <div className="text-center my-auto px-1">
+                                                            <h4 className="font-bold text-xs tracking-tight leading-tight line-clamp-2 drop-shadow-sm">{book.title}</h4>
+                                                        </div>
+                                                        <div className="flex justify-between items-center text-[8px] border-t border-white/20 pt-1.5 opacity-80">
+                                                            <span className="truncate pr-1">ISBN: {book.isbn.substring(0, 5)}...</span>
+                                                            <Icon name="QrCode" className="w-3 h-3 flex-shrink-0" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="p-3 flex-1 flex flex-col justify-between">
+                                                        <div className="space-y-1">
+                                                            <span className="text-[8px] font-extrabold text-amber-500 uppercase tracking-widest block truncate">{book.category}</span>
+                                                            <h4 className="font-bold text-xs text-slate-800 dark:text-white line-clamp-2 leading-snug">{book.title}</h4>
+                                                            <p className="text-[9px] text-slate-400 line-clamp-1">{book.author}</p>
+                                                            <div className="pt-1 mt-1 border-t border-slate-100 dark:border-slate-800/80">
+                                                                <span className="text-[10px] font-semibold text-slate-500">Stok: <span className="font-black text-slate-700 dark:text-slate-200">{book.stock}</span></span>
+                                                            </div>
+                                                        </div>
+
+                                                        {hasAccess(['Admin', 'Petugas']) && (
+                                                            <div className="flex gap-1.5 mt-3 pt-2">
+                                                                <button onClick={() => openEditBook(book)} className="flex-1 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-[10px] font-bold transition-all flex items-center justify-center gap-1 text-slate-600 dark:text-slate-300">
+                                                                    <Icon name="Edit2" className="w-3 h-3 text-blue-500" /> Edit
+                                                                </button>
+                                                                <button onClick={() => handleDeleteBook(book.id)} className="px-2 py-1.5 rounded-md bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all duration-200">
+                                                                    <Icon name="Trash2" className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* VIEW 3: KATEGORI BUKU */}
+                                {activeMenu === 'Kategori Buku' && (
+                                    <div className="space-y-6 animate-fadeIn">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <h2 className="text-2xl font-black">Kategori Buku</h2>
+                                                <p className="text-slate-400 text-sm mt-1">Kelompokkan buku perpustakaan untuk mempermudah pencarian siswa</p>
+                                            </div>
+                                            <button onClick={() => { setCategoryForm({ id: '', name: '', desc: '' }); setModalType('addCategory'); }} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-3 rounded-xl font-bold transition-all text-sm shadow-lg shadow-amber-500/10">
+                                                <Icon name="Plus" className="w-4.5 h-4.5" /> Tambah Kategori
+                                            </button>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            {categories.map((cat) => (
+                                                <div key={cat.id} className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
+                                                            <Icon name="BookMarked" className="w-6 h-6" />
+                                                        </div>
+                                                        <span className="text-xs font-bold text-slate-400">{cat.id}</span>
+                                                    </div>
+                                                    <h4 className="font-extrabold text-lg mt-4">{cat.name}</h4>
+                                                    <p className="text-slate-400 text-sm mt-2 line-clamp-2">{cat.desc}</p>
+                                                    <div className="flex gap-2 border-t border-slate-100 dark:border-slate-800/80 pt-4 mt-6">
+                                                        <button onClick={() => { setCategoryForm(cat); setModalType('editCategory'); }} className="flex-1 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-xs font-bold transition-all flex items-center justify-center gap-1.5">
+                                                            <Icon name="Edit2" className="w-3.5 h-3.5 text-blue-500" /> Edit Kategori
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* VIEW 4: DATA ANGGOTA */}
+                                {activeMenu === 'Data Anggota' && (
+                                    <div className="space-y-6 animate-fadeIn">
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                            <div>
+                                                <h2 className="text-2xl font-black">Keanggotaan Perpustakaan</h2>
+                                                <p className="text-slate-400 text-sm mt-1">Siswa dan Guru terdaftar yang berhak meminjam pustaka</p>
+                                            </div>
+                                            <div className="flex gap-2.5 w-full sm:w-auto">
+                                                <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleImportExcel} />
+                                                <button onClick={() => fileInputRef.current?.click()} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl font-bold transition-all text-xs">
+                                                    <Icon name="Upload" className="w-4 h-4" /> Import Excel
+                                                </button>
+                                                <button onClick={openAddMember} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-3 rounded-xl font-bold transition-all text-sm shadow-lg shadow-amber-500/10">
+                                                    <Icon name="Plus" className="w-4.5 h-4.5" /> Tambah Anggota
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className={`p-4 rounded-xl border max-w-md ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                            <div className="relative">
+                                                <Icon name="Search" className="w-4.5 h-4.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                <input 
+                                                    type="text"
+                                                    placeholder="Cari Nama Anggota, NISN, Kelas..."
+                                                    value={searchMember}
+                                                    onChange={(e) => setSearchMember(e.target.value)}
+                                                    className={`w-full pl-10 pr-4 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {filteredMembers.map((m) => (
+                                                <div key={m.id} className={`p-6 rounded-2xl border flex flex-col justify-between transition-all duration-300 hover:shadow-lg ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                                    <div className="flex gap-4">
+                                                        <img src={m.photo} alt={m.name} className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-500/30" />
+                                                        <div className="overflow-hidden flex-1">
+                                                            <span className="text-[10px] font-extrabold text-amber-500 uppercase tracking-widest">{m.id}</span>
+                                                            <h4 className="font-bold text-base truncate">{m.name}</h4>
+                                                            <p className="text-xs text-slate-400 mt-0.5 font-semibold">NISN: {m.nisn}</p>
+                                                            <p className="text-xs text-slate-400 mt-0.5">{m.grade}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-2 mt-4 text-xs py-3 border-y border-slate-100 dark:border-slate-800/80 my-4">
+                                                        <div><span className="text-slate-400">Gender:</span></div>
+                                                        <div className="text-right font-medium">{m.gender}</div>
+                                                        <div><span className="text-slate-400">No. HP:</span></div>
+                                                        <div className="text-right font-medium">{m.phone}</div>
+                                                        <div><span className="text-slate-400">Alamat:</span></div>
+                                                        <div className="text-right font-medium truncate" title={m.address}>{m.address}</div>
+                                                    </div>
+
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => showMemberCard(m)} className="flex-1 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-slate-950 text-xs font-bold transition-all flex items-center justify-center gap-1.5">
+                                                            <Icon name="QrCode" className="w-4 h-4" /> Kartu
+                                                        </button>
+                                                        <button onClick={() => openEditMember(m)} className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:text-slate-400" title="Edit Anggota">
+                                                            <Icon name="Edit2" className="w-4 h-4" />
+                                                        </button>
+                                                        <button onClick={() => handleDeleteMember(m.id)} className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all" title="Hapus Anggota">
+                                                            <Icon name="Trash2" className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* VIEW 5: PENGUNJUNG */}
+                                {activeMenu === 'Pengunjung' && (
+                                    <div className="space-y-8 animate-fadeIn">
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                                            <div className={`p-6 rounded-2xl border lg:col-span-1 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                                <h3 className="font-extrabold text-lg mb-2">Buku Tamu Digital</h3>
+                                                <p className="text-xs text-slate-400 mb-6">Silakan isi formulir kehadiran perpustakaan untuk memantau aktivitas literasi sekolah.</p>
+
+                                                <form onSubmit={handleAddVisitor} className="space-y-4">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Scan QR Anggota / ID</label>
+                                                        <div className="relative">
+                                                            <input 
+                                                                type="text"
+                                                                placeholder="M001 atau NISN..."
+                                                                value={visitorInput.memberId}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setVisitorInput(prev => ({ ...prev, memberId: val }));
+                                                                    const match = members.find(m => m.id === val || m.nisn === val);
+                                                                    if (match) {
+                                                                        setVisitorInput(prev => ({ ...prev, name: match.name, grade: match.grade }));
+                                                                    }
+                                                                }}
+                                                                className={`w-full pl-3 pr-10 py-2.5 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                            />
+                                                            <button type="button" onClick={() => setModalType('scanQR')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500">
+                                                                <Icon name="QrCode" className="w-5 h-5" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Nama Lengkap</label>
+                                                        <input 
+                                                            type="text" required placeholder="Masukkan nama..."
+                                                            value={visitorInput.name}
+                                                            onChange={(e) => setVisitorInput(prev => ({ ...prev, name: e.target.value }))}
+                                                            className={`w-full px-3 py-2.5 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        />
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Kelas / Unit</label>
+                                                        <select 
+                                                            required
+                                                            value={visitorInput.grade}
+                                                            onChange={(e) => setVisitorInput(prev => ({ ...prev, grade: e.target.value }))}
+                                                            className={`w-full px-3 py-2.5 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        >
+                                                            <option value="">-- Pilih Kelas --</option>
+                                                            {settings.classes.map(c => <option key={c} value={c}>{c}</option>)}
+                                                            <option value="Guru">Guru</option>
+                                                            <option value="Tamu Umum">Tamu Umum</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Tujuan Kunjungan</label>
+                                                        <select 
+                                                            value={visitorInput.purpose}
+                                                            onChange={(e) => setVisitorInput(prev => ({ ...prev, purpose: e.target.value }))}
+                                                            className={`w-full px-3 py-2.5 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        >
+                                                            <option>Membaca Buku</option>
+                                                            <option>Meminjam Buku</option>
+                                                            <option>Mengembalikan Buku</option>
+                                                            <option>Riset & Belajar</option>
+                                                            <option>Mengerjakan Tugas Kelompok</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition-all shadow-lg shadow-amber-500/10 text-sm">
+                                                        Simpan Kunjungan
+                                                    </button>
+                                                </form>
+                                            </div>
+
+                                            <div className={`p-6 rounded-2xl border lg:col-span-2 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                                <div className="flex justify-between items-center mb-6">
+                                                    <div>
+                                                        <h3 className="font-extrabold text-lg">Kehadiran Hari Ini</h3>
+                                                        <p className="text-xs text-slate-400">Daftar pengunjung harian perpustakaan</p>
+                                                    </div>
+                                                    <span className="text-xs font-extrabold bg-amber-500/10 text-amber-500 px-3.5 py-1.5 rounded-xl">{visitors.length} Total Hadir</span>
+                                                </div>
+
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-left border-collapse">
+                                                        <thead>
+                                                            <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 uppercase font-bold">
+                                                                <th className="py-3 px-2">No</th>
+                                                                <th className="py-3 px-2">ID Anggota</th>
+                                                                <th className="py-3 px-2">Nama</th>
+                                                                <th className="py-3 px-2">Kelas</th>
+                                                                <th className="py-3 px-2">Tujuan</th>
+                                                                <th className="py-3 px-2">Waktu</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                                                            {visitors.map((v, i) => (
+                                                                <tr key={v.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20">
+                                                                    <td className="py-3 px-2 text-slate-400">{i + 1}</td>
+                                                                    <td className="py-3 px-2 font-bold text-amber-500">{v.memberId || '-'}</td>
+                                                                    <td className="py-3 px-2">{v.name}</td>
+                                                                    <td className="py-3 px-2">{v.grade}</td>
+                                                                    <td className="py-3 px-2">
+                                                                        <span className="px-2.5 py-1 rounded-full text-[11px] bg-slate-100 dark:bg-slate-800 font-bold">{v.purpose}</span>
+                                                                    </td>
+                                                                    <td className="py-3 px-2 text-slate-400">{v.timestamp}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* VIEW 6: PEMINJAMAN */}
+                                {activeMenu === 'Peminjaman' && (
+                                    <div className="space-y-6 animate-fadeIn">
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                            <div>
+                                                <h2 className="text-2xl font-black">Transaksi Sirkulasi Buku</h2>
+                                                <p className="text-slate-400 text-sm mt-1">Kelola pinjaman aktif, tanggal jatuh tempo, dan denda keterlambatan</p>
+                                            </div>
+                                            <button onClick={() => { setBorrowForm({ memberId: '', bookId: '', borrowDate: new Date().toISOString().split('T')[0] }); setModalType('addBorrow'); }} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-3 rounded-xl font-bold transition-all text-sm shadow-lg shadow-amber-500/10">
+                                                <Icon name="Plus" className="w-4.5 h-4.5" /> Peminjaman Baru
+                                            </button>
+                                        </div>
+
+                                        <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 uppercase font-bold">
+                                                            <th className="py-4 px-3">Kode</th>
+                                                            <th className="py-4 px-3">Anggota</th>
+                                                            <th className="py-4 px-3">Buku</th>
+                                                            <th className="py-4 px-3">Tgl Pinjam</th>
+                                                            <th className="py-4 px-3">Batas</th>
+                                                            <th className="py-4 px-3">Tgl Kembali</th>
+                                                            <th className="py-4 px-3">Status</th>
+                                                            <th className="py-4 px-3">Denda</th>
+                                                            <th className="py-4 px-3 text-right">Aksi</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                                                        {borrowings.map((b) => (
+                                                            <tr key={b.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20">
+                                                                <td className="py-4 px-3 text-slate-400">{b.id}</td>
+                                                                <td className="py-4 px-3">
+                                                                    <p className="font-bold">{b.memberName}</p>
+                                                                    <span className="text-[10px] text-slate-400">{b.memberId}</span>
+                                                                </td>
+                                                                <td className="py-4 px-3 truncate max-w-xs">{b.bookTitle}</td>
+                                                                <td className="py-4 px-3 text-slate-400">{b.borrowDate}</td>
+                                                                <td className="py-4 px-3 text-slate-400">{b.dueDate}</td>
+                                                                <td className="py-4 px-3 text-emerald-500 font-bold">{b.returnDate || '-'}</td>
+                                                                <td className="py-4 px-3">
+                                                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${b.status === 'Kembali' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>{b.status}</span>
+                                                                </td>
+                                                                <td className="py-4 px-3">
+                                                                    {b.fine > 0 ? <span className="text-rose-500 font-extrabold">Rp {b.fine.toLocaleString('id-ID')}</span> : '-'}
+                                                                </td>
+                                                                <td className="py-4 px-3 text-right">
+                                                                    {b.status !== 'Kembali' && (
+                                                                        <button onClick={() => handleReturnBook(b.id)} className="py-1.5 px-3 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 text-xs font-bold">Kembalikan</button>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* VIEW 7: LAPORAN & REAL DOWNLOAD */}
+                                {activeMenu === 'Laporan & Ekspor' && (
+                                    <div className="space-y-6 animate-fadeIn">
+                                        <div>
+                                            <h2 className="text-2xl font-black">Laporan & Rekapitulasi</h2>
+                                            <p className="text-slate-400 text-sm mt-1">Unduh rekapitulasi data menggunakan library ekspor instan</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            {/* Peminjaman */}
+                                            <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                                <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl w-fit">
+                                                    <Icon name="FileText" className="w-6 h-6" />
+                                                </div>
+                                                <h4 className="font-extrabold text-lg mt-4">Rekap Peminjaman</h4>
+                                                <p className="text-slate-400 text-sm mt-2">Daftar transaksi sirkulasi lengkap dengan denda.</p>
+                                                <div className="flex gap-2 mt-6">
+                                                    <button onClick={() => exportToPDF('Peminjaman')} className="flex-1 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold flex items-center justify-center gap-1.5">
+                                                        <Icon name="Download" className="w-4 h-4" /> PDF
+                                                    </button>
+                                                    <button onClick={() => exportToExcel('Peminjaman')} className="flex-1 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold flex items-center justify-center gap-1.5">
+                                                        <Icon name="Download" className="w-4 h-4" /> Excel
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Pengunjung */}
+                                            <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                                <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl w-fit">
+                                                    <Icon name="Award" className="w-6 h-6" />
+                                                </div>
+                                                <h4 className="font-extrabold text-lg mt-4">Rekap Pengunjung</h4>
+                                                <p className="text-slate-400 text-sm mt-2">Daftar kunjungan harian perpustakaan.</p>
+                                                <div className="flex gap-2 mt-6">
+                                                    <button onClick={() => exportToPDF('Pengunjung')} className="flex-1 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold flex items-center justify-center gap-1.5">
+                                                        <Icon name="Download" className="w-4 h-4" /> PDF
+                                                    </button>
+                                                    <button onClick={() => exportToExcel('Pengunjung')} className="flex-1 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold flex items-center justify-center gap-1.5">
+                                                        <Icon name="Download" className="w-4 h-4" /> Excel
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Inventori */}
+                                            <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                                <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl w-fit">
+                                                    <Icon name="BookOpen" className="w-6 h-6" />
+                                                </div>
+                                                <h4 className="font-extrabold text-lg mt-4">Katalog Inventori</h4>
+                                                <p className="text-slate-400 text-sm mt-2">Laporan inventarisasi buku sekolah.</p>
+                                                <div className="flex gap-2 mt-6">
+                                                    <button onClick={() => exportToPDF('Inventori')} className="flex-1 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold flex items-center justify-center gap-1.5">
+                                                        <Icon name="Download" className="w-4 h-4" /> PDF
+                                                    </button>
+                                                    <button onClick={() => exportToExcel('Inventori')} className="flex-1 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold flex items-center justify-center gap-1.5">
+                                                        <Icon name="Download" className="w-4 h-4" /> Excel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* VIEW 8: STATISTIK LITERASI */}
+                                {activeMenu === 'Statistik Literasi' && (
+                                    <div className="space-y-8 animate-fadeIn">
+                                        <div>
+                                            <h2 className="text-2xl font-black">Dashboard Literasi Sekolah</h2>
+                                            <p className="text-slate-400 text-sm mt-1">Mengukur minat baca dan perkembangan literasi digital siswa</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                                <h4 className="font-extrabold text-base mb-4 flex items-center gap-2 text-amber-500"><Icon name="Users" className="w-5 h-5" /> Siswa Teraktif</h4>
+                                                <div className="space-y-3">
+                                                    {[{ name: 'Rian Hidayat', count: 18, class: 'XII IPA 1' }, { name: 'Siti Aminah', count: 14, class: 'XI IPS 2' }].map((item, idx) => (
+                                                        <div key={item.name} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
+                                                            <div>
+                                                                <p className="text-sm font-bold">{item.name}</p>
+                                                                <p className="text-[10px] text-slate-400">{item.class}</p>
+                                                            </div>
+                                                            <span className="text-xs font-extrabold bg-amber-500/15 text-amber-500 px-2 py-1 rounded-md">{item.count} Buku</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                                <h4 className="font-extrabold text-base mb-4 flex items-center gap-2 text-blue-500"><Icon name="BarChart2" className="w-5 h-5" /> Kelas Teraktif</h4>
+                                                <div className="space-y-3">
+                                                    {[{ className: 'XII IPA 1', score: '95%', visits: 340, color: 'bg-blue-500' }, { className: 'XI IPS 2', score: '82%', visits: 295, color: 'bg-emerald-500' }].map((item) => (
+                                                        <div key={item.className} className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
+                                                            <div className="flex justify-between text-xs font-bold">
+                                                                <span>{item.className}</span>
+                                                                <span className="text-slate-400">{item.visits} Hadir</span>
+                                                            </div>
+                                                            <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                                                                <div className={`h-full ${item.color}`} style={{ width: item.score }}></div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                                <h4 className="font-extrabold text-base mb-4 flex items-center gap-2 text-emerald-500"><Icon name="BookMarked" className="w-5 h-5" /> Kategori Favorit</h4>
+                                                <div className="space-y-4">
+                                                    {[{ name: 'Fiksi & Novel', percentage: 45 }, { name: 'Sains & Teknologi', percentage: 25 }].map((item) => (
+                                                        <div key={item.name} className="space-y-1">
+                                                            <div className="flex justify-between text-xs font-bold text-slate-500">
+                                                                <span>{item.name}</span>
+                                                                <span>{item.percentage}%</span>
+                                                            </div>
+                                                            <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-amber-500" style={{ width: `${item.percentage}%` }}></div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* VIEW 9: PENGATURAN */}
+                                {activeMenu === 'Pengaturan' && (
+                                    <div className="space-y-6 animate-fadeIn">
+                                        <div>
+                                            <h2 className="text-2xl font-black">Pengaturan Perpustakaan</h2>
+                                            <p className="text-slate-400 text-sm mt-1">Konfigurasi nama sekolah, kebijakan durasi pinjam, dan tarif denda</p>
+                                        </div>
+
+                                        <div className={`p-6 rounded-2xl border max-w-2xl ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                            <form onSubmit={(e) => { e.preventDefault(); showToast('Pengaturan perpustakaan disimpan!', 'success'); }} className="space-y-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Nama Sekolah / Instansi</label>
+                                                        <input 
+                                                            type="text"
+                                                            value={settings.schoolName}
+                                                            onChange={(e) => setSettings({ ...settings, schoolName: e.target.value })}
+                                                            className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Alamat Sekolah</label>
+                                                        <input 
+                                                            type="text"
+                                                            value={settings.address}
+                                                            onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                                                            className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Denda Per Hari (Rp)</label>
+                                                        <input 
+                                                            type="number"
+                                                            value={settings.finePerDay}
+                                                            onChange={(e) => setSettings({ ...settings, finePerDay: Number(e.target.value) })}
+                                                            className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Maksimal Lama Pinjam (Hari)</label>
+                                                        <input 
+                                                            type="number"
+                                                            value={settings.maxBorrowDays}
+                                                            onChange={(e) => setSettings({ ...settings, maxBorrowDays: Number(e.target.value) })}
+                                                            className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="h-px w-full bg-slate-100 dark:bg-slate-800 my-6"></div>
+
+                                                <div>
+                                                    <h3 className="text-sm font-bold mb-3">Manajemen Daftar Kelas</h3>
+                                                    <div className="flex gap-2 mb-4">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Tambah kelas baru..."
+                                                            value={newClassInput}
+                                                            onChange={(e) => setNewClassInput(e.target.value)}
+                                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddClass(); } }}
+                                                            className={`flex-1 px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                        />
+                                                        <button type="button" onClick={handleAddClass} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all">Tambah</button>
+                                                    </div>
+
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {settings.classes.map(cls => (
+                                                            <div key={cls} className="flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-500 px-3 py-1.5 rounded-lg text-xs font-bold border border-amber-500/20">
+                                                                {cls}
+                                                                <button type="button" onClick={() => handleDeleteClass(cls)} className="hover:text-rose-500 transition-colors ml-1" title="Hapus Kelas">
+                                                                    <Icon name="X" className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-4 border-t border-slate-100 dark:bg-slate-800 mt-6">
+                                                    <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl transition-all text-xs">Simpan Konfigurasi</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                )}
+
+                            </div>
+
+                            {/* MODAL POPUPS */}
+                            {modalType && (
+                                <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                                    <div className={`w-full max-w-xl rounded-2xl border shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                                            <h3 className="font-extrabold text-lg text-slate-800 dark:text-white">
+                                                {modalType === 'addBook' && 'Tambah Buku Baru'}
+                                                {modalType === 'editBook' && 'Edit Data Buku'}
+                                                {modalType === 'addCategory' && 'Tambah Kategori'}
+                                                {modalType === 'editCategory' && 'Edit Kategori'}
+                                                {modalType === 'addMember' && 'Tambah Anggota Baru'}
+                                                {modalType === 'editMember' && 'Edit Data Anggota'}
+                                                {modalType === 'addBorrow' && 'Transaksi Peminjaman Baru'}
+                                                {modalType === 'scanQR' && 'Simulasi Scanner QR Code'}
+                                                {modalType === 'cardMember' && 'Kartu Anggota Perpustakaan'}
+                                            </h3>
+                                            <button onClick={() => setModalType(null)} className="text-slate-400 hover:text-rose-500"><Icon name="X" className="w-6 h-6" /></button>
+                                        </div>
+
+                                        <div className="p-6 max-h-[80vh] overflow-y-auto scrollbar-thin">
+                                            {/* Form Buku */}
+                                            {(modalType === 'addBook' || modalType === 'editBook') && (
+                                                <form onSubmit={handleSaveBook} className="space-y-4">
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">KODE BUKU</label>
+                                                            <input type="text" required value={bookForm.code} onChange={(e) => setBookForm({...bookForm, code: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">JUDUL BUKU</label>
+                                                            <input type="text" required value={bookForm.title} onChange={(e) => setBookForm({...bookForm, title: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">PENULIS</label>
+                                                            <input type="text" required value={bookForm.author} onChange={(e) => setBookForm({...bookForm, author: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">PENERBIT</label>
+                                                            <input type="text" required value={bookForm.publisher} onChange={(e) => setBookForm({...bookForm, publisher: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">TAHUN TERBIT</label>
+                                                            <input type="text" required value={bookForm.year} onChange={(e) => setBookForm({...bookForm, year: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">ISBN</label>
+                                                            <input type="text" required value={bookForm.isbn} onChange={(e) => setBookForm({...bookForm, isbn: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">LOKASI RAK</label>
+                                                            <input type="text" required value={bookForm.shelf} onChange={(e) => setBookForm({...bookForm, shelf: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">STOK</label>
+                                                            <input type="number" required min="0" value={bookForm.stock} onChange={(e) => setBookForm({...bookForm, stock: Number(e.target.value)})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                        <button type="button" onClick={() => setModalType(null)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold">Batal</button>
+                                                        <button type="submit" className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs">Simpan Buku</button>
+                                                    </div>
+                                                </form>
+                                            )}
+
+                                            {/* Form Kategori */}
+                                            {(modalType === 'addCategory' || modalType === 'editCategory') && (
+                                                <form onSubmit={handleSaveCategory} className="space-y-4">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1">NAMA KATEGORI</label>
+                                                        <input type="text" required value={categoryForm.name} onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1">DESKRIPSI KETERANGAN</label>
+                                                        <textarea rows="3" required value={categoryForm.desc} onChange={(e) => setCategoryForm({...categoryForm, desc: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}></textarea>
+                                                    </div>
+                                                    <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                        <button type="button" onClick={() => setModalType(null)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold">Batal</button>
+                                                        <button type="submit" className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs">Simpan Kategori</button>
+                                                    </div>
+                                                </form>
+                                            )}
+
+                                            {/* Form Anggota */}
+                                            {(modalType === 'addMember' || modalType === 'editMember') && (
+                                                <form onSubmit={handleSaveMember} className="space-y-4">
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">NAMA ANGGOTA</label>
+                                                            <input type="text" required value={memberForm.name} onChange={(e) => setMemberForm({...memberForm, name: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">NISN / NIP</label>
+                                                            <input type="text" required value={memberForm.nisn} onChange={(e) => setMemberForm({...memberForm, nisn: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">KELAS / JABATAN</label>
+                                                            <select required value={memberForm.grade} onChange={(e) => setMemberForm({...memberForm, grade: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}>
+                                                                <option value="">-- Pilih Kelas --</option>
+                                                                {settings.classes.map(c => <option key={c} value={c}>{c}</option>)}
+                                                                <option value="Guru">Guru</option>
+                                                                <option value="Staff">Staff</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">JENIS KELAMIN</label>
+                                                            <select value={memberForm.gender} onChange={(e) => setMemberForm({...memberForm, gender: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}>
+                                                                <option>Laki-laki</option>
+                                                                <option>Perempuan</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">NOMOR HP</label>
+                                                            <input type="text" required value={memberForm.phone} onChange={(e) => setMemberForm({...memberForm, phone: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1">ALAMAT TINGGAL</label>
+                                                            <input type="text" required value={memberForm.address} onChange={(e) => setMemberForm({...memberForm, address: e.target.value})} className={`w-full px-3 py-2 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                        <button type="button" onClick={() => setModalType(null)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold">Batal</button>
+                                                        <button type="submit" className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs">Simpan Anggota</button>
+                                                    </div>
+                                                </form>
+                                            )}
+
+                                            {/* Transaksi Peminjaman */}
+                                            {modalType === 'addBorrow' && (
+                                                <form onSubmit={handleSaveBorrowing} className="space-y-4">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Pilih Anggota</label>
+                                                        <select required value={borrowForm.memberId} onChange={(e) => setBorrowForm({ ...borrowForm, memberId: e.target.value })} className={`w-full px-3 py-2.5 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}>
+                                                            <option value="">-- Pilih Anggota Peminjam --</option>
+                                                            {members.map(m => (
+                                                                <option key={m.id} value={m.id}>{m.id} - {m.name} ({m.grade})</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Pilih Buku</label>
+                                                        <select required value={borrowForm.bookId} onChange={(e) => setBorrowForm({ ...borrowForm, bookId: e.target.value })} className={`w-full px-3 py-2.5 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}>
+                                                            <option value="">-- Pilih Buku --</option>
+                                                            {books.map(b => (
+                                                                <option key={b.id} value={b.id} disabled={b.stock <= 0}>
+                                                                    {b.code} - {b.title} ({b.stock > 0 ? `Stok: ${b.stock}` : 'Habis/Dipinjam'})
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Tanggal Peminjaman</label>
+                                                        <input type="date" required value={borrowForm.borrowDate} onChange={(e) => setBorrowForm({ ...borrowForm, borrowDate: e.target.value })} className={`w-full px-3 py-2.5 text-sm rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`} />
+                                                    </div>
+                                                    <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                        <button type="button" onClick={() => setModalType(null)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold">Batal</button>
+                                                        <button type="submit" className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs">Proses Pinjam</button>
+                                                    </div>
+                                                </form>
+                                            )}
+
+                                            {/* Kartu Anggota */}
+                                            {modalType === 'cardMember' && selectedItem && (
+                                                <div className="space-y-6">
+                                                    <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 p-6 rounded-2xl text-white relative border border-slate-800 shadow-xl overflow-hidden aspect-[1.586/1]">
+                                                        <div className="absolute top-0 right-0 w-44 h-44 bg-amber-500/10 rounded-full blur-2xl"></div>
+                                                        <div className="flex justify-between items-start border-b border-white/10 pb-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <Icon name="BookOpen" className="w-5 h-5 text-amber-500" />
+                                                                <div>
+                                                                    <p className="text-[10px] font-extrabold tracking-wider">SMART SCHOOL LIBRARY</p>
+                                                                    <p className="text-[8px] text-amber-400">KARTU ANGGOTA DIGITAL</p>
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-[8px] bg-white/15 px-2 py-0.5 rounded-full font-bold">SMART-CARD</span>
+                                                        </div>
+                                                        <div className="flex gap-4 mt-4 items-center">
+                                                            <img src={selectedItem.photo} alt={selectedItem.name} className="w-20 h-20 rounded-xl object-cover border-2 border-amber-500/30" />
+                                                            <div className="overflow-hidden flex-1">
+                                                                <h4 className="font-extrabold text-base truncate text-amber-400">{selectedItem.name}</h4>
+                                                                <table className="text-[10px] mt-1.5 w-full text-slate-300">
+                                                                    <tbody>
+                                                                        <tr>
+                                                                            <td className="py-0.5 font-bold w-12">NISN</td>
+                                                                            <td>: {selectedItem.nisn}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="py-0.5 font-bold">KELAS</td>
+                                                                            <td>: {selectedItem.grade}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="py-0.5 font-bold">EXPIRED</td>
+                                                                            <td>: 31 Des 2026</td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                            <div className="bg-white p-2 rounded-lg flex-shrink-0 flex flex-col items-center gap-1 shadow-md">
+                                                                <div className="w-16 h-16 bg-slate-200 flex items-center justify-center border border-slate-100">
+                                                                    <Icon name="QrCode" className="w-14 h-14 text-slate-800" />
+                                                                </div>
+                                                                <span className="text-[7px] text-slate-800 font-bold">{selectedItem.id}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-end">
+                                                        <button onClick={() => window.print()} className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5">
+                                                            <Icon name="Printer" className="w-4 h-4" /> Cetak Kartu Fisik
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Scanner QR Code */}
+                                            {modalType === 'scanQR' && (
+                                                <div className="text-center py-6 space-y-4">
+                                                    <div className="w-48 h-48 border-4 border-dashed border-amber-500 rounded-2xl mx-auto flex items-center justify-center relative overflow-hidden bg-slate-950/20">
+                                                        <div className="w-full h-1 bg-amber-500 absolute animate-scan line-glow"></div>
+                                                        <Icon name="QrCode" className="w-24 h-24 text-slate-400 opacity-60" />
+                                                    </div>
+                                                    <p className="text-xs text-slate-400 px-8">Kamera siap mendeteksi QR Code Kartu Anggota Digital atau Buku secara instan.</p>
+                                                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                        <button type="button" onClick={() => { setVisitorInput(prev => ({ ...prev, memberId: 'M001', name: 'Rian Hidayat', grade: 'XII IPA 1' })); setModalType(null); showToast('QR Code Anggota (M001) Berhasil Dipindai!', 'success'); }} className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs">Simulasikan Scan (Anggota M001)</button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* CUSTOM CONFIRMATION DIALOG */}
+                            {confirmDialog.isOpen && (
+                                <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                                    <div className={`w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-zoomIn border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                        <div className="flex gap-3 items-start">
+                                            <div className="p-3 rounded-full bg-rose-500/10 text-rose-500 flex-shrink-0">
+                                                <Icon name="AlertTriangle" className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-lg">{confirmDialog.title}</h3>
+                                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">{confirmDialog.message}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-end gap-3 mt-6">
+                                            <button onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })} className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold text-slate-700 dark:text-slate-300">Batal</button>
+                                            <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog({ ...confirmDialog, isOpen: false }); }} className="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-lg shadow-rose-500/20">Ya, Hapus</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                        </main>
+
+                    </div>
+
+                </div>
+            );
+        }
+
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
