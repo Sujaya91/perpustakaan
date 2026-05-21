@@ -259,11 +259,36 @@
         const INITIAL_VISITORS = [];
         const INITIAL_BORROWINGS = [];
 
+        // ==========================================
+        // CUSTOM HOOK: LOCAL STORAGE (PENYIMPANAN DATA)
+        // ==========================================
+        function useLocalStorage(key, initialValue) {
+            const [value, setValue] = useState(() => {
+                try {
+                    const item = window.localStorage.getItem(key);
+                    return item ? JSON.parse(item) : initialValue;
+                } catch (error) {
+                    console.error("Gagal membaca dari localStorage", error);
+                    return initialValue;
+                }
+            });
+
+            useEffect(() => {
+                try {
+                    window.localStorage.setItem(key, JSON.stringify(value));
+                } catch (error) {
+                    console.error("Gagal menyimpan ke localStorage", error);
+                }
+            }, [key, value]);
+
+            return [value, setValue];
+        }
+
         function App() {
             // ==========================================
             // STATE MANAGEMENT
             // ==========================================
-            const [theme, setTheme] = useState('light');
+            const [theme, setTheme] = useLocalStorage('smartLib_theme', 'light');
             const [currentRole, setCurrentRole] = useState('Admin'); // Admin, Petugas, Guru, Siswa
             const [activeMenu, setActiveMenu] = useState('Dashboard');
             const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -277,13 +302,13 @@
             const [importFile, setImportFile] = useState(null);
             const [importSelectedClass, setImportSelectedClass] = useState('');
 
-            // Database State
-            const [books, setBooks] = useState(INITIAL_BOOKS);
-            const [categories, setCategories] = useState(INITIAL_CATEGORIES);
-            const [members, setMembers] = useState(INITIAL_MEMBERS);
-            const [visitors, setVisitors] = useState(INITIAL_VISITORS);
-            const [borrowings, setBorrowings] = useState(INITIAL_BORROWINGS);
-            const [settings, setSettings] = useState({
+            // Database State (Persisted via LocalStorage / Tersimpan Permanen)
+            const [books, setBooks] = useLocalStorage('smartLib_books', INITIAL_BOOKS);
+            const [categories, setCategories] = useLocalStorage('smartLib_categories', INITIAL_CATEGORIES);
+            const [members, setMembers] = useLocalStorage('smartLib_members', INITIAL_MEMBERS);
+            const [visitors, setVisitors] = useLocalStorage('smartLib_visitors', INITIAL_VISITORS);
+            const [borrowings, setBorrowings] = useLocalStorage('smartLib_borrowings', INITIAL_BORROWINGS);
+            const [settings, setSettings] = useLocalStorage('smartLib_settings', {
                 schoolName: 'SMA Negeri 1 Harapan Bangsa',
                 address: 'Jl. Pendidikan No. 1, Kota Cerdas',
                 finePerDay: 2000,
