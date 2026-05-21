@@ -251,44 +251,13 @@
         };
 
         // ==========================================
-        // DATA DUMMY AWAL (SIMULASI DATABASE)
+        // INISIALISASI DATABASE KOSONG (PRODUKSI)
         // ==========================================
-        const INITIAL_BOOKS = [
-            { id: 'B001', code: 'BK-001', title: 'Laskar Pelangi', author: 'Andrea Hirata', publisher: 'Bentang Pustaka', year: '2005', isbn: '978-979-3062-79-1', category: 'Fiksi', shelf: 'Rak A1', stock: 5, status: 'Tersedia', coverColor: 'from-blue-500 to-teal-500' },
-            { id: 'B002', code: 'BK-002', title: 'Bumi Manusia', author: 'Pramoedya Ananta Toer', publisher: 'Lentera Dipantara', year: '1980', isbn: '978-979-97312-3-4', category: 'Sejarah', shelf: 'Rak B3', stock: 2, status: 'Tersedia', coverColor: 'from-amber-600 to-red-700' },
-            { id: 'B003', code: 'BK-003', title: 'Fisika Dasar XI', author: 'Bambang Ruwanto', publisher: 'Erlangga', year: '2018', isbn: '978-602-241-112-9', category: 'Pelajaran', shelf: 'Rak C2', stock: 12, status: 'Tersedia', coverColor: 'from-indigo-600 to-purple-600' },
-            { id: 'B004', code: 'BK-004', title: 'Filosofi Teras', author: 'Henry Manampiring', publisher: 'Kompas', year: '2019', isbn: '978-602-412-518-9', category: 'Self Improvement', shelf: 'Rak D1', stock: 0, status: 'Dipinjam Semua', coverColor: 'from-gray-700 to-slate-900' },
-            { id: 'B005', code: 'BK-005', title: 'Negeri 5 Menara', author: 'A. Fuadi', publisher: 'Gramedia', year: '2009', isbn: '978-979-22-4845-6', category: 'Fiksi', shelf: 'Rak A2', stock: 4, status: 'Tersedia', coverColor: 'from-emerald-500 to-green-700' },
-        ];
-
-        const INITIAL_CATEGORIES = [
-            { id: 'C1', name: 'Fiksi', desc: 'Buku cerita rekaan, novel, dan sastra fiktif' },
-            { id: 'C2', name: 'Sejarah', desc: 'Dokumentasi peristiwa masa lampau nasional & dunia' },
-            { id: 'C3', name: 'Pelajaran', desc: 'Buku teks kurikulum sekolah dasar dan menengah' },
-            { id: 'C4', name: 'Self Improvement', desc: 'Pengembangan diri, psikologi populer, dan motivasi' },
-            { id: 'C5', name: 'Sains & Technology', desc: 'Buku ilmiah populer, komputer, dan matematika' },
-        ];
-
-        const INITIAL_MEMBERS = [
-            { id: 'M001', name: 'Rian Hidayat', nisn: '0081234567', grade: 'XII IPA 1', gender: 'Laki-laki', phone: '081234567890', address: 'Jl. Merdeka No. 45' },
-            { id: 'M002', name: 'Siti Aminah', nisn: '0089876543', grade: 'XI IPS 2', gender: 'Perempuan', phone: '085712345678', address: 'Gg. Kelinci No. 12' },
-            { id: 'M003', name: 'Budi Santoso', nisn: '0095556667', grade: 'X-3', gender: 'Laki-laki', phone: '082199887766', address: 'Perum Asri Blok C-8' },
-            { id: 'M004', name: 'Amelia Putri', nisn: '0084443332', grade: 'XII IPS 1', gender: 'Perempuan', phone: '089988776655', address: 'Jl. Melati No. 5' },
-        ];
-
-        const INITIAL_VISITORS = [
-            { id: 'V001', memberId: 'M001', name: 'Rian Hidayat', grade: 'XII IPA 1', purpose: 'Membaca Buku', timestamp: '2026-05-19 08:30' },
-            { id: 'V002', memberId: 'M002', name: 'Siti Aminah', grade: 'XI IPS 2', purpose: 'Meminjam Buku', timestamp: '2026-05-19 09:15' },
-            { id: 'V003', memberId: '', name: 'Drs. H. Ahmad Fauzi', grade: 'Guru Sejarah', purpose: 'Riset Pembelajaran', timestamp: '2026-05-19 10:00' },
-            { id: 'V004', memberId: 'M003', name: 'Budi Santoso', grade: 'X-3', purpose: 'Mengerjakan Tugas', timestamp: '2026-05-19 11:20' },
-            { id: 'V005', memberId: 'M004', name: 'Amelia Putri', grade: 'XII IPS 1', purpose: 'Membaca Buku', timestamp: '2026-05-19 14:05' },
-        ];
-
-        const INITIAL_BORROWINGS = [
-            { id: 'T001', memberId: 'M001', memberName: 'Rian Hidayat', bookId: 'B001', bookTitle: 'Laskar Pelangi', borrowDate: '2026-05-10', dueDate: '2026-05-17', returnDate: '2026-05-16', status: 'Kembali', fine: 0 },
-            { id: 'T002', memberId: 'M002', memberName: 'Siti Aminah', bookId: 'B002', bookTitle: 'Bumi Manusia', borrowDate: '2026-05-12', dueDate: '2026-05-19', returnDate: '', status: 'Dipinjam', fine: 0 },
-            { id: 'T003', memberId: 'M003', memberName: 'Budi Santoso', bookId: 'B004', bookTitle: 'Filosofi Teras', borrowDate: '2026-05-05', dueDate: '2026-05-12', returnDate: '', status: 'Terlambat', fine: 14000 },
-        ];
+        const INITIAL_BOOKS = [];
+        const INITIAL_CATEGORIES = [];
+        const INITIAL_MEMBERS = [];
+        const INITIAL_VISITORS = [];
+        const INITIAL_BORROWINGS = [];
 
         function App() {
             // ==========================================
@@ -347,8 +316,72 @@
             const [filterCategory, setFilterCategory] = useState('Semua');
             const [searchMember, setSearchMember] = useState('');
 
-            // System Date Simulation
-            const todayStr = '2026-05-19';
+            // System Real Date
+            const todayObj = new Date();
+            const todayStr = todayObj.toISOString().split('T')[0];
+            const displayDate = todayObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+            // Dynamic Chart & Stats Data
+            const last7Days = useMemo(() => {
+                return Array.from({length: 7}, (_, i) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - (6 - i));
+                    const dayName = d.toLocaleDateString('id-ID', { weekday: 'short' });
+                    const dateStr = d.toISOString().split('T')[0];
+                    const count = visitors.filter(v => v.timestamp.startsWith(dateStr)).length;
+                    return { day: dayName, visits: count, date: dateStr };
+                });
+            }, [visitors]);
+
+            const topMembers = useMemo(() => {
+                const memberCounts = {};
+                borrowings.forEach(b => {
+                    memberCounts[b.memberId] = (memberCounts[b.memberId] || 0) + 1;
+                });
+                return Object.entries(memberCounts)
+                    .map(([id, count]) => {
+                        const m = members.find(x => x.id === id);
+                        return m ? { name: m.name, class: m.grade, count } : null;
+                    })
+                    .filter(Boolean)
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 4);
+            }, [borrowings, members]);
+
+            const topClasses = useMemo(() => {
+                const classCounts = {};
+                visitors.forEach(v => {
+                    if (v.grade && v.grade !== 'Tamu Umum' && v.grade !== 'Guru' && v.grade !== 'Staff') {
+                        classCounts[v.grade] = (classCounts[v.grade] || 0) + 1;
+                    }
+                });
+                const total = Object.values(classCounts).reduce((a,b) => a+b, 0) || 1;
+                const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-amber-500'];
+                return Object.entries(classCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 4)
+                    .map(([className, visits], idx) => ({
+                        className,
+                        visits,
+                        score: `${Math.round((visits/total)*100)}%`,
+                        color: colors[idx % colors.length]
+                    }));
+            }, [visitors]);
+
+            const topCategories = useMemo(() => {
+                const catCounts = {};
+                books.forEach(b => {
+                    catCounts[b.category] = (catCounts[b.category] || 0) + 1;
+                });
+                const total = books.length || 1;
+                return Object.entries(catCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 4)
+                    .map(([name, count]) => ({
+                        name,
+                        percentage: Math.round((count/total)*100)
+                    }));
+            }, [books]);
 
             // Dark Mode Class Changer
             useEffect(() => {
@@ -1148,28 +1181,6 @@
                             </nav>
 
                             <div className="p-4 border-t border-slate-800 bg-slate-950/60">
-                                {!sidebarCollapsed && (
-                                    <div className="mb-3">
-                                        <label className="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Pilih Hak Akses Simulator:</label>
-                                        <div className="grid grid-cols-2 gap-1.5 text-xs">
-                                            {['Admin', 'Petugas', 'Guru', 'Siswa'].map((r) => (
-                                                <button
-                                                    key={r}
-                                                    onClick={() => {
-                                                        setCurrentRole(r);
-                                                        showToast(`Beralih ke peran: ${r}`, 'info');
-                                                    }}
-                                                    className={`py-1.5 px-2 rounded-lg font-medium transition-all duration-200 border
-                                                        ${currentRole === r 
-                                                            ? 'bg-slate-800 text-amber-500 border-amber-500/30' 
-                                                            : 'bg-transparent text-slate-400 border-transparent hover:bg-slate-900'}`}
-                                                >
-                                                    {r}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-amber-500/40 flex items-center justify-center font-bold text-amber-500">
                                         {currentRole[0]}
@@ -1217,7 +1228,7 @@
                                 <div className="flex items-center gap-3">
                                     <span className={`text-xs px-3 py-1.5 rounded-full font-semibold border hidden lg:inline-flex items-center gap-1.5
                                         ${theme === 'dark' ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                                        <Icon name="Calendar" className="w-3.5 h-3.5 text-amber-500" /> Simulasi Hari: <strong>19 Mei 2026</strong>
+                                        <Icon name="Calendar" className="w-3.5 h-3.5 text-amber-500" /> <strong>{displayDate}</strong>
                                     </span>
                                     <button 
                                         onClick={toggleTheme}
@@ -1343,23 +1354,19 @@
                                                 </div>
 
                                                 <div className="h-64 flex items-end justify-between gap-4 pt-4 border-b border-slate-100 dark:border-slate-800 px-4">
-                                                    {[
-                                                        { day: 'Sen', visits: 45 },
-                                                        { day: 'Sel', visits: 62 },
-                                                        { day: 'Rab', visits: 85 },
-                                                        { day: 'Kam', visits: 70 },
-                                                        { day: 'Jum', visits: 52 },
-                                                        { day: 'Sab', visits: 30 },
-                                                        { day: 'Ming', visits: 10 },
-                                                    ].map((d) => (
-                                                        <div key={d.day} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer relative">
-                                                            <div 
-                                                                style={{ height: `${(d.visits / 100) * 160}px` }}
-                                                                className="w-full rounded-t-lg bg-gradient-to-t from-slate-800 to-amber-500 group-hover:from-slate-700 group-hover:to-amber-400 transition-all duration-300 relative shadow-md shadow-amber-500/10"
-                                                            ></div>
-                                                            <span className="text-xs font-semibold text-slate-400 pt-2">{d.day}</span>
-                                                        </div>
-                                                    ))}
+                                                    {last7Days.map((d, i) => {
+                                                        const maxVisits = Math.max(...last7Days.map(x => x.visits), 10);
+                                                        return (
+                                                            <div key={i} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer relative">
+                                                                <span className="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white px-2 py-1 rounded-md absolute -top-8 pointer-events-none shadow-lg">{d.visits}</span>
+                                                                <div 
+                                                                    style={{ height: `${(d.visits / maxVisits) * 160}px` }}
+                                                                    className="w-full rounded-t-lg bg-gradient-to-t from-slate-800 to-amber-500 group-hover:from-slate-700 group-hover:to-amber-400 transition-all duration-300 relative shadow-md shadow-amber-500/10"
+                                                                ></div>
+                                                                <span className="text-xs font-semibold text-slate-400 pt-2">{d.day}</span>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
 
@@ -1370,6 +1377,7 @@
                                                 </div>
 
                                                 <div className="space-y-4">
+                                                    {books.length === 0 && <p className="text-sm text-slate-400 italic py-4">Belum ada buku terdaftar.</p>}
                                                     {books.slice(0, 4).map((book, idx) => (
                                                         <div key={book.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-all duration-200">
                                                             <div className={`w-10 h-14 rounded-md bg-gradient-to-br ${book.coverColor} flex flex-col justify-between p-1 text-white shadow-sm flex-shrink-0`}>
@@ -1859,8 +1867,9 @@
                                             <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                                                 <h4 className="font-extrabold text-base mb-4 flex items-center gap-2 text-amber-500"><Icon name="Users" className="w-5 h-5" /> Siswa Teraktif</h4>
                                                 <div className="space-y-3">
-                                                    {[{ name: 'Rian Hidayat', count: 18, class: 'XII IPA 1' }, { name: 'Siti Aminah', count: 14, class: 'XI IPS 2' }].map((item, idx) => (
-                                                        <div key={item.name} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
+                                                    {topMembers.length === 0 && <p className="text-sm text-slate-400 italic py-4">Belum ada data peminjaman.</p>}
+                                                    {topMembers.map((item, idx) => (
+                                                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
                                                             <div>
                                                                 <p className="text-sm font-bold">{item.name}</p>
                                                                 <p className="text-[10px] text-slate-400">{item.class}</p>
@@ -1874,8 +1883,9 @@
                                             <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                                                 <h4 className="font-extrabold text-base mb-4 flex items-center gap-2 text-blue-500"><Icon name="BarChart2" className="w-5 h-5" /> Kelas Teraktif</h4>
                                                 <div className="space-y-3">
-                                                    {[{ className: 'XII IPA 1', score: '95%', visits: 340, color: 'bg-blue-500' }, { className: 'XI IPS 2', score: '82%', visits: 295, color: 'bg-emerald-500' }].map((item) => (
-                                                        <div key={item.className} className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
+                                                    {topClasses.length === 0 && <p className="text-sm text-slate-400 italic py-4">Belum ada data kunjungan kelas.</p>}
+                                                    {topClasses.map((item, idx) => (
+                                                        <div key={idx} className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
                                                             <div className="flex justify-between text-xs font-bold">
                                                                 <span>{item.className}</span>
                                                                 <span className="text-slate-400">{item.visits} Hadir</span>
@@ -1891,8 +1901,9 @@
                                             <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                                                 <h4 className="font-extrabold text-base mb-4 flex items-center gap-2 text-emerald-500"><Icon name="BookMarked" className="w-5 h-5" /> Kategori Favorit</h4>
                                                 <div className="space-y-4">
-                                                    {[{ name: 'Fiksi & Novel', percentage: 45 }, { name: 'Sains & Teknologi', percentage: 25 }].map((item) => (
-                                                        <div key={item.name} className="space-y-1">
+                                                    {topCategories.length === 0 && <p className="text-sm text-slate-400 italic py-4">Belum ada kategori buku.</p>}
+                                                    {topCategories.map((item, idx) => (
+                                                        <div key={idx} className="space-y-1">
                                                             <div className="flex justify-between text-xs font-bold text-slate-500">
                                                                 <span>{item.name}</span>
                                                                 <span>{item.percentage}%</span>
@@ -2439,9 +2450,7 @@
                                                         <Icon name="QrCode" className="w-24 h-24 text-slate-400 opacity-60" />
                                                     </div>
                                                     <p className="text-xs text-slate-400 px-8">Kamera siap mendeteksi QR Code Kartu Anggota Digital atau Buku secara instan.</p>
-                                                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                                                        <button type="button" onClick={() => { setVisitorInput(prev => ({ ...prev, memberId: 'M001', name: 'Rian Hidayat', grade: 'XII IPA 1' })); setModalType(null); showToast('QR Code Anggota (M001) Berhasil Dipindai!', 'success'); }} className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs">Simulasikan Scan (Anggota M001)</button>
-                                                    </div>
+                                                    <p className="text-[10px] text-amber-500 font-bold bg-amber-500/10 px-4 py-2 rounded-lg inline-block">Arahkan kursor ke kolom input lalu tekan tombol pada alat scanner Anda.</p>
                                                 </div>
                                             )}
                                         </div>
