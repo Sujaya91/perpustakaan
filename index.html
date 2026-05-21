@@ -297,6 +297,7 @@
             // Custom Confirmation Modal
             const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
             const fileInputRef = useRef(null);
+            const backupFileInputRef = useRef(null);
 
             // Excel import file state & selected class state
             const [importFile, setImportFile] = useState(null);
@@ -462,6 +463,81 @@
             const handleDeleteClass = (clsToRemove) => {
                 setSettings(prev => ({ ...prev, classes: prev.classes.filter(c => c !== clsToRemove) }));
                 showToast('Kelas dihapus', 'info');
+            };
+
+            // ==========================================
+            // SISTEM BACKUP DATA (EKSPOR, IMPOR, RESET)
+            // ==========================================
+            const handleExportBackup = () => {
+                const backupData = {
+                    books,
+                    categories,
+                    members,
+                    visitors,
+                    borrowings,
+                    settings
+                };
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", `SmartLibrary_Backup_${todayStr}.json`);
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+                showToast('Data Backup berhasil diekspor (diunduh)!', 'success');
+            };
+
+            const handleImportBackup = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedData = JSON.parse(event.target.result);
+                        if (importedData.books && importedData.settings) {
+                            setBooks(importedData.books);
+                            setCategories(importedData.categories || []);
+                            setMembers(importedData.members || []);
+                            setVisitors(importedData.visitors || []);
+                            setBorrowings(importedData.borrowings || []);
+                            setSettings(importedData.settings);
+                            showToast('Pemulihan Data (Restore) berhasil!', 'success');
+                        } else {
+                            showToast('Format file backup tidak valid atau rusak!', 'error');
+                        }
+                    } catch (error) {
+                        showToast('Gagal memproses file backup!', 'error');
+                    }
+                    if (backupFileInputRef.current) {
+                        backupFileInputRef.current.value = '';
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            const handleResetData = () => {
+                setConfirmDialog({
+                    isOpen: true,
+                    title: 'Hapus Seluruh Data Sistem',
+                    message: 'PERINGATAN FATAL: Tindakan ini akan MENGHAPUS SEMUA DATA (Buku, Anggota, Transaksi, Pengunjung) secara permanen. Apakah Anda yakin ingin mengosongkan sistem?',
+                    onConfirm: () => {
+                        setBooks([]);
+                        setCategories([]);
+                        setMembers([]);
+                        setVisitors([]);
+                        setBorrowings([]);
+                        setSettings({
+                            schoolName: 'SMA Negeri 1 Harapan Bangsa',
+                            address: 'Jl. Pendidikan No. 1, Kota Cerdas',
+                            finePerDay: 2000,
+                            maxBorrowDays: 7,
+                            maxBorrowBooks: 3,
+                            classes: ['X-1', 'X-2', 'X-3', 'XI IPA 1', 'XI IPS 1', 'XI IPS 2', 'XII IPA 1', 'XII IPS 1'],
+                        });
+                        showToast('Seluruh data berhasil dihapus dan dikembalikan ke pengaturan awal!', 'success');
+                    }
+                });
             };
 
             // Hitung Denda Otomatis Terlambat
@@ -2025,6 +2101,49 @@
                                                     <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl transition-all text-xs">Simpan Konfigurasi</button>
                                                 </div>
                                             </form>
+
+                                            {/* SISTEM BACKUP DATA */}
+                                            <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800">
+                                                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                                                    <Icon name="Settings" className="w-5 h-5 text-amber-500" /> Sistem Backup & Pemulihan Data
+                                                </h3>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+                                                    Amankan data perpustakaan Anda secara berkala. File backup akan disimpan dengan format aman <strong>.json</strong> di komputer Anda.
+                                                </p>
+                                                
+                                                <div className="flex flex-wrap gap-4">
+                                                    <button 
+                                                        onClick={handleExportBackup}
+                                                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-bold transition-all text-xs shadow-md shadow-blue-500/20"
+                                                    >
+                                                        <Icon name="Download" className="w-4 h-4" /> Ekspor Data (Backup)
+                                                    </button>
+
+                                                    <input 
+                                                        type="file" 
+                                                        accept=".json" 
+                                                        ref={backupFileInputRef} 
+                                                        className="hidden" 
+                                                        onChange={handleImportBackup} 
+                                                    />
+                                                    <button 
+                                                        onClick={() => backupFileInputRef.current?.click()}
+                                                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl font-bold transition-all text-xs shadow-md shadow-emerald-500/20"
+                                                    >
+                                                        <Icon name="Upload" className="w-4 h-4" /> Impor Data (Restore)
+                                                    </button>
+
+                                                    <div className="flex-1"></div>
+
+                                                    <button 
+                                                        onClick={handleResetData}
+                                                        className="flex items-center gap-2 bg-rose-100 hover:bg-rose-500 text-rose-600 hover:text-white dark:bg-rose-500/10 dark:text-rose-500 dark:hover:bg-rose-500 dark:hover:text-white px-5 py-3 rounded-xl font-bold transition-all text-xs border border-rose-500/30"
+                                                    >
+                                                        <Icon name="Trash2" className="w-4 h-4" /> Kosongkan Semua Data
+                                                    </button>
+                                                </div>
+                                            </div>
+
                                         </div>
                                     </div>
                                 )}
@@ -2474,8 +2593,38 @@
                                                         <div className="w-full h-1 bg-amber-500 absolute animate-scan line-glow"></div>
                                                         <Icon name="QrCode" className="w-24 h-24 text-slate-400 opacity-60" />
                                                     </div>
-                                                    <p className="text-xs text-slate-400 px-8">Kamera siap mendeteksi QR Code Kartu Anggota Digital atau Buku secara instan.</p>
-                                                    <p className="text-[10px] text-amber-500 font-bold bg-amber-500/10 px-4 py-2 rounded-lg inline-block">Arahkan kursor ke kolom input lalu tekan tombol pada alat scanner Anda.</p>
+                                                    <p className="text-xs text-slate-400 px-8">Kamera siap mendeteksi QR Code Kartu Anggota Digital secara instan.</p>
+                                                    
+                                                    {members.length > 0 ? (
+                                                        <div className="space-y-2 px-6 text-left">
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Simulasikan Deteksi Anggota:</label>
+                                                            <div className="flex flex-wrap gap-1.5 justify-center max-h-32 overflow-y-auto p-2 border rounded-xl dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40">
+                                                                {members.map(m => (
+                                                                    <button
+                                                                        key={m.id}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setVisitorInput(prev => ({ 
+                                                                                ...prev, 
+                                                                                memberId: m.id,
+                                                                                name: m.name,
+                                                                                grade: m.grade
+                                                                            }));
+                                                                            setModalType(null);
+                                                                            showToast(`QR Code ${m.name} (${m.id}) Berhasil Dipindai!`, 'success');
+                                                                        }}
+                                                                        className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500 hover:text-slate-950 text-xs font-bold transition-all text-amber-500"
+                                                                    >
+                                                                        Scan {m.name} ({m.id})
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="px-6 text-xs text-rose-500 font-semibold bg-rose-500/10 py-3 rounded-lg mx-8 text-center">
+                                                            Belum ada anggota terdaftar. Silakan tambahkan anggota di menu Data Anggota terlebih dahulu untuk mensimulasikan scan.
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
