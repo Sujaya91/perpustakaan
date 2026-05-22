@@ -316,6 +316,12 @@
                 maxBorrowDays: 7,
                 maxBorrowBooks: 3,
                 classes: ['X-1', 'X-2', 'X-3', 'XI IPA 1', 'XI IPS 1', 'XI IPS 2', 'XII IPA 1', 'XII IPS 1'],
+                semester: 'Ganjil',
+                academicYear: '2026/2027',
+                librarianName: '',
+                librarianNip: '',
+                principalName: '',
+                principalNip: ''
             });
 
             // Modal & Edit Form States
@@ -341,6 +347,7 @@
             const [searchBook, setSearchBook] = useState('');
             const [filterCategory, setFilterCategory] = useState('Semua');
             const [searchMember, setSearchMember] = useState('');
+            const [filterMemberClass, setFilterMemberClass] = useState('Semua');
 
             // System Real Date
             const todayObj = new Date();
@@ -635,6 +642,26 @@
                     onConfirm: () => {
                         setMembers(members.filter(m => m.id !== id));
                         showToast('Data anggota berhasil dihapus', 'success');
+                    }
+                });
+            };
+
+            const handleDeleteClassMembers = () => {
+                if (filterMemberClass === 'Semua') return;
+                
+                const membersToDelete = members.filter(m => m.grade === filterMemberClass);
+                if (membersToDelete.length === 0) {
+                    showToast(`Tidak ada data anggota di kelas ${filterMemberClass}.`, 'info');
+                    return;
+                }
+
+                setConfirmDialog({
+                    isOpen: true,
+                    title: `Kosongkan Kelas ${filterMemberClass}`,
+                    message: `PERINGATAN: Anda akan MENGHAPUS SEMUA (${membersToDelete.length}) DATA ANGGOTA di kelas ${filterMemberClass} secara permanen. Apakah Anda yakin?`,
+                    onConfirm: () => {
+                        setMembers(members.filter(m => m.grade !== filterMemberClass));
+                        showToast(`Seluruh anggota di kelas ${filterMemberClass} berhasil dihapus.`, 'success');
                     }
                 });
             };
@@ -1072,7 +1099,8 @@
                 
                 doc.setFontSize(10);
                 doc.setTextColor(100, 116, 139); // Gray Text
-                doc.text(`Sekolah: ${settings.schoolName} | Tanggal Cetak: ${todayStr}`, 40, 65);
+                doc.text(`Sekolah: ${settings.schoolName || '-'} | Tahun Pelajaran: ${settings.academicYear || '-'} (${settings.semester || '-'})`, 40, 65);
+                doc.text(`Tanggal Cetak: ${displayDate}`, 40, 80);
 
                 let columns = [];
                 let rows = [];
@@ -1117,12 +1145,29 @@
                 doc.autoTable({
                     head: [columns],
                     body: rows,
-                    startY: 85,
+                    startY: 95,
                     theme: 'grid',
                     headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
                     alternateRowStyles: { fillColor: [248, 250, 252] },
                     styles: { fontSize: 9, cellPadding: 8 }
                 });
+
+                // Tanda Tangan Administrasi PDF
+                const finalY = doc.lastAutoTable.finalY || 95;
+                doc.setFontSize(10);
+                doc.setTextColor(15, 23, 42);
+                
+                const signatureY = finalY + 40;
+                doc.text(`Mengetahui,`, 40, signatureY);
+                doc.text(`Kepala Sekolah`, 40, signatureY + 15);
+                doc.text(settings.principalName || '(.............................................)', 40, signatureY + 70);
+                if (settings.principalNip) doc.text(`NIP. ${settings.principalNip}`, 40, signatureY + 85);
+                
+                const rightAlignX = doc.internal.pageSize.width - 200;
+                doc.text(`Mengesahkan,`, rightAlignX, signatureY);
+                doc.text(`Pustakawan`, rightAlignX, signatureY + 15);
+                doc.text(settings.librarianName || '(.............................................)', rightAlignX, signatureY + 70);
+                if (settings.librarianNip) doc.text(`NIP. ${settings.librarianNip}`, rightAlignX, signatureY + 85);
 
                 doc.save(`Laporan_${reportType}_${todayStr}.pdf`);
                 showToast(`Sukses mendownload Laporan_${reportType}.pdf`, 'success');
@@ -1141,12 +1186,14 @@
 
             // Filter Anggota Utama
             const filteredMembers = useMemo(() => {
-                return members.filter(m => 
-                    m.name.toLowerCase().includes(searchMember.toLowerCase()) ||
-                    m.nisn.includes(searchMember) ||
-                    m.grade.toLowerCase().includes(searchMember.toLowerCase())
-                );
-            }, [members, searchMember]);
+                return members.filter(m => {
+                    const matchSearch = m.name.toLowerCase().includes(searchMember.toLowerCase()) ||
+                                        m.nisn.includes(searchMember) ||
+                                        m.grade.toLowerCase().includes(searchMember.toLowerCase());
+                    const matchClass = filterMemberClass === 'Semua' || m.grade === filterMemberClass;
+                    return matchSearch && matchClass;
+                });
+            }, [members, searchMember, filterMemberClass]);
 
             // Filter Opsi Member untuk Dropdown Searchable Peminjaman
             const filteredMemberOptions = useMemo(() => {
@@ -1633,16 +1680,40 @@
                                             </div>
                                         </div>
 
-                                        {/* Search Bar */}
-                                        <div className={`p-4 rounded-xl border max-w-md ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                                            <div className="relative">
+                                        {/* Search & Filter Bar */}
+                                        <div className={`p-4 rounded-xl border flex flex-col md:flex-row gap-4 items-center justify-between ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                            <div className="relative w-full md:w-80">
                                                 <input 
                                                     type="text"
-                                                    placeholder="Cari Nama Anggota, NISN, Kelas..."
+                                                    placeholder="Cari Nama Anggota, NISN..."
                                                     value={searchMember}
                                                     onChange={(e) => setSearchMember(e.target.value)}
                                                     className={`w-full px-4 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                                 />
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                                                <span className="text-xs text-slate-400 font-bold flex items-center gap-1"><Icon name="Filter" className="w-3.5 h-3.5" /> Kelas:</span>
+                                                <select 
+                                                    value={filterMemberClass}
+                                                    onChange={(e) => setFilterMemberClass(e.target.value)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+                                                >
+                                                    <option value="Semua">Semua Kelas</option>
+                                                    {settings.classes.map(c => <option key={c} value={c}>{c}</option>)}
+                                                    <option value="Guru">Guru</option>
+                                                    <option value="Staff">Staff</option>
+                                                </select>
+                                                
+                                                {filterMemberClass !== 'Semua' && (
+                                                    <button 
+                                                        onClick={handleDeleteClassMembers}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white text-xs font-bold transition-all"
+                                                        title={`Hapus semua anggota di kelas ${filterMemberClass}`}
+                                                    >
+                                                        <Icon name="Trash2" className="w-3.5 h-3.5" /> Kosongkan Kelas
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
 
@@ -2064,6 +2135,67 @@
                                                             type="number"
                                                             value={settings.maxBorrowDays}
                                                             onChange={(e) => setSettings({ ...settings, maxBorrowDays: Number(e.target.value) })}
+                                                            className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Tahun Pelajaran</label>
+                                                        <input 
+                                                            type="text"
+                                                            placeholder="Contoh: 2026/2027"
+                                                            value={settings.academicYear || ''}
+                                                            onChange={(e) => setSettings({ ...settings, academicYear: e.target.value })}
+                                                            className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Semester</label>
+                                                        <select 
+                                                            value={settings.semester || 'Ganjil'}
+                                                            onChange={(e) => setSettings({ ...settings, semester: e.target.value })}
+                                                            className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        >
+                                                            <option value="Ganjil">Ganjil</option>
+                                                            <option value="Genap">Genap</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Nama Pustakawan</label>
+                                                        <input 
+                                                            type="text"
+                                                            placeholder="Nama Lengkap Pustakawan"
+                                                            value={settings.librarianName || ''}
+                                                            onChange={(e) => setSettings({ ...settings, librarianName: e.target.value })}
+                                                            className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">NIP Pustakawan</label>
+                                                        <input 
+                                                            type="text"
+                                                            placeholder="Nomor Induk Pegawai"
+                                                            value={settings.librarianNip || ''}
+                                                            onChange={(e) => setSettings({ ...settings, librarianNip: e.target.value })}
+                                                            className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Nama Kepala Sekolah</label>
+                                                        <input 
+                                                            type="text"
+                                                            placeholder="Nama Lengkap Kepala Sekolah"
+                                                            value={settings.principalName || ''}
+                                                            onChange={(e) => setSettings({ ...settings, principalName: e.target.value })}
+                                                            className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">NIP Kepala Sekolah</label>
+                                                        <input 
+                                                            type="text"
+                                                            placeholder="Nomor Induk Pegawai"
+                                                            value={settings.principalNip || ''}
+                                                            onChange={(e) => setSettings({ ...settings, principalNip: e.target.value })}
                                                             className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
                                                         />
                                                     </div>
