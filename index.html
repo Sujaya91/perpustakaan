@@ -297,11 +297,13 @@
             // Custom Confirmation Modal
             const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
             const fileInputRef = useRef(null);
+            const bookExcelInputRef = useRef(null);
             const backupFileInputRef = useRef(null);
 
-            // Excel import file state & selected class state
+            // File upload states
             const [importFile, setImportFile] = useState(null);
             const [importSelectedClass, setImportSelectedClass] = useState('');
+            const [importBookFile, setImportBookFile] = useState(null);
 
             // Database State (Persisted via LocalStorage / Tersimpan Permanen)
             const [books, setBooks] = useLocalStorage('smartLib_books', INITIAL_BOOKS);
@@ -325,7 +327,7 @@
             });
 
             // Modal & Edit Form States
-            const [modalType, setModalType] = useState(null); // 'addBook', 'editBook', 'addCategory', 'editCategory', 'addMember', 'editMember', 'addBorrow', 'scanQR', 'cardMember', 'importMemberExcel'
+            const [modalType, setModalType] = useState(null); // 'addBook', 'editBook', 'addCategory', 'editCategory', 'addMember', 'editMember', 'addBorrow', 'scanQR', 'cardMember', 'importMemberExcel', 'importBookExcel'
             const [selectedItem, setSelectedItem] = useState(null);
             const [searchGlobal, setSearchGlobal] = useState('');
             const [newClassInput, setNewClassInput] = useState('');
@@ -348,6 +350,7 @@
             const [filterCategory, setFilterCategory] = useState('Semua');
             const [searchMember, setSearchMember] = useState('');
             const [filterMemberClass, setFilterMemberClass] = useState('Semua');
+            const [searchBorrow, setSearchBorrow] = useState('');
 
             // System Real Date
             const todayObj = new Date();
@@ -415,33 +418,6 @@
                         percentage: Math.round((count/total)*100)
                     }));
             }, [books]);
-
-            // Dark Mode Class Changer
-            useEffect(() => {
-                if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                }
-            }, [theme]);
-
-            // Synchronize searchable fields on open
-            useEffect(() => {
-                if (modalType === 'addBorrow') {
-                    if (borrowForm.memberId) {
-                        const m = members.find(x => x.id === borrowForm.memberId);
-                        setMemberSearch(m ? `${m.id} - ${m.name} (${m.grade})` : '');
-                    } else {
-                        setMemberSearch('');
-                    }
-                    if (borrowForm.bookId) {
-                        const b = books.find(x => x.id === borrowForm.bookId);
-                        setBookSearch(b ? `${b.code} - ${b.title}` : '');
-                    } else {
-                        setBookSearch('');
-                    }
-                }
-            }, [modalType, borrowForm.memberId, borrowForm.bookId, members, books]);
 
             // ==========================================
             // UTILITIES & HELPER FUNCTIONS
@@ -541,33 +517,17 @@
                             maxBorrowDays: 7,
                             maxBorrowBooks: 3,
                             classes: ['X-1', 'X-2', 'X-3', 'XI IPA 1', 'XI IPS 1', 'XI IPS 2', 'XII IPA 1', 'XII IPS 1'],
+                            semester: 'Ganjil',
+                            academicYear: '2026/2027',
+                            librarianName: '',
+                            librarianNip: '',
+                            principalName: '',
+                            principalNip: ''
                         });
-                        showToast('Seluruh data berhasil dihapus dan dikembalikan ke pengaturan awal!', 'success');
+                        showToast('Seluruh data berhasil dihapus!', 'success');
                     }
                 });
             };
-
-            // Hitung Denda Otomatis Terlambat
-            useEffect(() => {
-                const updatedBorrowings = borrowings.map(b => {
-                    if (b.status === 'Dipinjam' || b.status === 'Terlambat') {
-                        const dueDateObj = new Date(b.dueDate);
-                        const todayObj = new Date(todayStr);
-                        if (todayObj > dueDateObj) {
-                            const diffTime = Math.abs(todayObj - dueDateObj);
-                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                            const calculatedFine = diffDays * settings.finePerDay;
-                            return { ...b, fine: calculatedFine, status: 'Terlambat' };
-                        }
-                    }
-                    return b;
-                });
-
-                const hasChanges = JSON.stringify(updatedBorrowings) !== JSON.stringify(borrowings);
-                if (hasChanges) {
-                    setBorrowings(updatedBorrowings);
-                }
-            }, [settings.finePerDay]);
 
             // ==========================================
             // DATA OPERATIONS (CRUD)
@@ -601,6 +561,248 @@
                         showToast('Buku berhasil dihapus dari sistem', 'success');
                     }
                 });
+            };
+
+            // Ekspor Buku Excel
+            const handleExportBooksExcel = () => {
+                if (books.length === 0) {
+                    showToast('Katalog buku masih kosong, tidak ada data untuk diekspor.', 'warning');
+                    return;
+                }
+                const rawData = books.map(b => ({
+                    'ID Buku': b.id,
+                    'Kode Buku': b.code,
+                    'Judul': b.title,
+                    'Penulis': b.author,
+                    'Penerbit': b.publisher,
+                    'Tahun': b.year,
+                    'ISBN': b.isbn,
+                    'Kategori': b.category,
+                    'Lokasi Rak': b.shelf,
+                    'Stok': b.stock,
+                    'Status': b.stock > 0 ? 'Tersedia' : 'Habis'
+                }));
+                const worksheet = XLSX.utils.json_to_sheet(rawData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Katalog Buku');
+                XLSX.writeFile(workbook, `Katalog_Buku_SmartLibrary_${todayStr}.xlsx`);
+                showToast('Katalog buku berhasil diekspor ke Excel!', 'success');
+            };
+
+            // Ekspor Buku PDF
+            const handleExportBooksPDF = () => {
+                exportToPDF('Inventori');
+            };
+
+            // Impor Buku via Excel (Real parsing)
+            const handleBookFileChange = (e) => {
+                setImportBookFile(e.target.files[0]);
+            };
+
+            const handleExecuteBookImport = () => {
+                if (!importBookFile) {
+                    showToast('Silakan pilih berkas Excel terlebih dahulu!', 'warning');
+                    return;
+                }
+                showToast(`Sedang membaca koleksi dari ${importBookFile.name}...`, 'info');
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        if (jsonData.length <= 1) {
+                            showToast('File Excel kosong atau tidak memiliki baris data!', 'error');
+                            return;
+                        }
+
+                        const headers = jsonData[0].map(h => String(h).trim().toLowerCase());
+                        const titleIdx = headers.indexOf('judul');
+                        const codeIdx = headers.indexOf('kode_buku');
+                        const authorIdx = headers.indexOf('penulis');
+                        const publisherIdx = headers.indexOf('penerbit');
+                        const yearIdx = headers.indexOf('tahun');
+                        const isbnIdx = headers.indexOf('isbn');
+                        const categoryIdx = headers.indexOf('kategori');
+                        const shelfIdx = headers.indexOf('rak');
+                        const stockIdx = headers.indexOf('stok');
+
+                        if (titleIdx === -1 || codeIdx === -1) {
+                            showToast('Format tidak sesuai! Pastikan memiliki header "Judul" dan "Kode_Buku".', 'error');
+                            return;
+                        }
+
+                        let importedCount = 0;
+                        let skippedCount = 0;
+                        const newImportedBooks = [];
+                        const colors = [
+                            'from-blue-500 to-indigo-600', 
+                            'from-teal-500 to-emerald-600', 
+                            'from-amber-500 to-orange-600', 
+                            'from-fuchsia-500 to-purple-600', 
+                            'from-rose-500 to-red-600'
+                        ];
+
+                        for (let i = 1; i < jsonData.length; i++) {
+                            const row = jsonData[i];
+                            if (!row || row.length === 0) continue;
+
+                            const titleVal = row[titleIdx] ? String(row[titleIdx]).trim() : '';
+                            const codeVal = row[codeIdx] ? String(row[codeIdx]).trim() : '';
+
+                            if (!titleVal || !codeVal) {
+                                skippedCount++;
+                                continue;
+                            }
+
+                            // Cek duplikasi kode buku
+                            const isCodeExists = books.some(b => b.code === codeVal) || newImportedBooks.some(b => b.code === codeVal);
+                            if (isCodeExists) {
+                                skippedCount++;
+                                continue;
+                            }
+
+                            const authorVal = row[authorIdx] ? String(row[authorIdx]).trim() : 'Anonim';
+                            const publisherVal = row[publisherIdx] ? String(row[publisherIdx]).trim() : '-';
+                            const yearVal = row[yearIdx] ? String(row[yearIdx]).trim() : '2026';
+                            const isbnVal = row[isbnIdx] ? String(row[isbnIdx]).trim() : '-';
+                            const categoryVal = row[categoryIdx] ? String(row[categoryIdx]).trim() : 'Fiksi';
+                            const shelfVal = row[shelfIdx] ? String(row[shelfIdx]).trim() : 'Rak Utama';
+                            const stockVal = row[stockIdx] ? parseInt(row[stockIdx]) || 1 : 1;
+
+                            const nextIdNumber = books.length + newImportedBooks.length + 1;
+                            const generatedId = `B${String(nextIdNumber).padStart(3, '0')}`;
+                            const randomColor = colors[nextIdNumber % colors.length];
+
+                            newImportedBooks.push({
+                                id: generatedId,
+                                code: codeVal,
+                                title: titleVal,
+                                author: authorVal,
+                                publisher: publisherVal,
+                                year: yearVal,
+                                isbn: isbnVal,
+                                category: categoryVal,
+                                shelf: shelfVal,
+                                stock: stockVal,
+                                status: stockVal > 0 ? 'Tersedia' : 'Habis',
+                                coverColor: randomColor
+                            });
+
+                            // Daftarkan kategori baru secara otomatis jika belum ada
+                            if (categoryVal && !categories.some(c => c.name.toLowerCase() === categoryVal.toLowerCase())) {
+                                const nextCatId = `C${categories.length + 1}`;
+                                setCategories(prev => [...prev, { id: nextCatId, name: categoryVal, desc: 'Dibuat otomatis via import' }]);
+                            }
+
+                            importedCount++;
+                        }
+
+                        if (importedCount > 0) {
+                            setBooks(prev => [...prev, ...newImportedBooks]);
+                            showToast(`Berhasil mengimpor ${importedCount} judul buku baru! (Skip: ${skippedCount} duplikat/invalid)`, 'success');
+                        } else {
+                            showToast('Tidak ada data buku baru yang berhasil diimpor.', 'warning');
+                        }
+
+                        setModalType(null);
+                        setImportBookFile(null);
+
+                    } catch (err) {
+                        console.error(err);
+                        showToast('Gagal memproses berkas Excel.', 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(importBookFile);
+            };
+
+            // Cetak Barcode Terisolasi
+            const triggerBarcodePrint = (book) => {
+                if (!book) return;
+                const printWindow = window.open('', '_blank', 'width=600,height=400');
+                if (!printWindow) {
+                    showToast('Gagal membuka jendela cetak. Pastikan pop-up diizinkan di browser Anda.', 'error');
+                    return;
+                }
+
+                printWindow.document.write(`
+                    <html>
+                    <head>
+                        <title>Cetak Barcode - ${book.title}</title>
+                        <script src="https://cdn.tailwindcss.com"><\/script>
+                        <style>
+                            @media print {
+                                body {
+                                    margin: 0;
+                                    padding: 0;
+                                    background: white;
+                                    -webkit-print-color-adjust: exact !important;
+                                    print-color-adjust: exact !important;
+                                }
+                                .barcode-tag {
+                                    border: 1px dashed #000 !important;
+                                    page-break-inside: avoid;
+                                }
+                            }
+                        </style>
+                    </head>
+                    <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
+                        <div class="barcode-tag bg-white p-6 rounded-md border border-slate-300 text-center w-[280px] shadow-sm">
+                            <h2 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-1 truncate leading-tight">${settings.schoolName}</h2>
+                            <p class="text-[10px] text-slate-500 font-bold mb-3 truncate leading-none">KATALOG PERPUSTAKAAN</p>
+                            
+                            <!-- Barcode representation -->
+                            <div class="mx-auto w-fit bg-slate-50 p-3 rounded border border-slate-100 flex flex-col items-center">
+                                <svg fill="currentColor" viewBox="0 0 100 35" class="w-48 h-12 text-slate-900">
+                                    <rect x="0" y="0" width="3" height="35"/>
+                                    <rect x="5" y="0" width="1" height="35"/>
+                                    <rect x="8" y="0" width="2" height="35"/>
+                                    <rect x="12" y="0" width="4" height="35"/>
+                                    <rect x="18" y="0" width="1" height="35"/>
+                                    <rect x="21" y="0" width="3" height="35"/>
+                                    <rect x="26" y="0" width="2" height="35"/>
+                                    <rect x="30" y="0" width="1" height="35"/>
+                                    <rect x="33" y="0" width="4" height="35"/>
+                                    <rect x="39" y="0" width="2" height="35"/>
+                                    <rect x="43" y="0" width="1" height="35"/>
+                                    <rect x="46" y="0" width="3" height="35"/>
+                                    <rect x="51" y="0" width="4" height="35"/>
+                                    <rect x="57" y="0" width="1" height="35"/>
+                                    <rect x="60" y="0" width="2" height="35"/>
+                                    <rect x="64" y="0" width="3" height="35"/>
+                                    <rect x="69" y="0" width="1" height="35"/>
+                                    <rect x="72" y="0" width="4" height="35"/>
+                                    <rect x="78" y="0" width="2" height="35"/>
+                                    <rect x="82" y="0" width="1" height="35"/>
+                                    <rect x="85" y="0" width="3" height="35"/>
+                                    <rect x="90" y="0" width="4" height="35"/>
+                                    <rect x="96" y="0" width="1" height="35"/>
+                                </svg>
+                                <span class="text-xs font-black tracking-[0.25em] text-slate-900 mt-1 font-mono">${book.code}</span>
+                            </div>
+                            
+                            <h3 class="font-extrabold text-[11px] mt-3 text-slate-800 truncate px-1">${book.title}</h3>
+                            <p class="text-[9px] text-slate-400 truncate leading-none mt-0.5">${book.author}</p>
+                            <span class="inline-block text-[8px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full mt-2 uppercase tracking-wider">${book.shelf}</span>
+                        </div>
+                        <script>
+                            window.onload = function() {
+                                setTimeout(function() {
+                                    window.print();
+                                    window.close();
+                                }, 500);
+                            };
+                        <\/script>
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                showToast(`Membuka sistem cetak label barcode untuk "${book.title}"...`, 'success');
             };
 
             // Kategori
@@ -821,6 +1023,31 @@
                 setBooks(books.map(b => b.id === targetBook.id ? { ...b, stock: b.stock - 1 } : b));
                 showToast('Peminjaman sukses dicatat!', 'success');
                 setModalType(null);
+            };
+
+            // Fitur Perpanjangan (Extend) Peminjaman
+            const handleExtendBorrowing = (borrowId) => {
+                const borrow = borrowings.find(b => b.id === borrowId);
+                if (!borrow) return;
+
+                // Tambahkan waktu perpanjangan dari hari jatuh tempo saat ini
+                const currentDueDate = new Date(borrow.dueDate);
+                currentDueDate.setDate(currentDueDate.getDate() + settings.maxBorrowDays);
+                const newDueDateStr = currentDueDate.toISOString().split('T')[0];
+
+                setBorrowings(borrowings.map(b => {
+                    if (b.id === borrowId) {
+                        return {
+                            ...b,
+                            dueDate: newDueDateStr,
+                            status: 'Dipinjam', // Reset status keterlambatan agar dinilai aktif kembali
+                            fine: 0 // Reset denda karena batas waktu resmi diperpanjang
+                        };
+                    }
+                    return b;
+                }));
+
+                showToast(`Durasi peminjaman buku "${borrow.bookTitle}" berhasil diperpanjang hingga ${newDueDateStr}.`, 'success');
             };
 
             // Proses Pengembalian Buku
@@ -1069,6 +1296,7 @@
                         'Penerbit': b.publisher,
                         'Tahun': b.year,
                         'ISBN': b.isbn,
+                        'Kategori': b.category,
                         'Lokasi Rak': b.shelf,
                         'Stok': b.stock,
                         'Status': b.stock > 0 ? 'Tersedia' : 'Habis'
@@ -1094,11 +1322,9 @@
 
                 // Judul PDF
                 doc.setFontSize(18);
-                doc.setTextColor(15, 23, 42); // Navy Blue
                 doc.text(`SMART LIBRARY - LAPORAN ${reportType.toUpperCase()}`, 40, 45);
                 
                 doc.setFontSize(10);
-                doc.setTextColor(100, 116, 139); // Gray Text
                 doc.text(`Sekolah: ${settings.schoolName || '-'} | Tahun Pelajaran: ${settings.academicYear || '-'} (${settings.semester || '-'})`, 40, 65);
                 doc.text(`Tanggal Cetak: ${displayDate}`, 40, 80);
 
@@ -1129,14 +1355,16 @@
                         v.timestamp
                     ]);
                 } else if (reportType === 'Inventori') {
-                    columns = ['Kode', 'Judul Buku', 'Penulis', 'Penerbit', 'Tahun', 'ISBN', 'Rak', 'Stok'];
+                    columns = ['ID Buku', 'Kode Buku', 'Judul Buku', 'Penulis', 'Penerbit', 'Tahun', 'ISBN', 'Kategori', 'Rak', 'Stok'];
                     rows = books.map(b => [
+                        b.id,
                         b.code,
                         b.title,
                         b.author,
                         b.publisher,
                         b.year,
                         b.isbn,
+                        b.category,
                         b.shelf,
                         b.stock
                     ]);
@@ -1155,7 +1383,6 @@
                 // Tanda Tangan Administrasi PDF
                 const finalY = doc.lastAutoTable.finalY || 95;
                 doc.setFontSize(10);
-                doc.setTextColor(15, 23, 42);
                 
                 const signatureY = finalY + 40;
                 doc.text(`Mengetahui,`, 40, signatureY);
@@ -1195,6 +1422,17 @@
                 });
             }, [members, searchMember, filterMemberClass]);
 
+            // Filter Transaksi Peminjaman Utama (Realtime Search)
+            const filteredBorrowings = useMemo(() => {
+                return borrowings.filter(b => {
+                    return b.id.toLowerCase().includes(searchBorrow.toLowerCase()) ||
+                           b.memberId.toLowerCase().includes(searchBorrow.toLowerCase()) ||
+                           b.memberName.toLowerCase().includes(searchBorrow.toLowerCase()) ||
+                           b.bookTitle.toLowerCase().includes(searchBorrow.toLowerCase()) ||
+                           b.status.toLowerCase().includes(searchBorrow.toLowerCase());
+                });
+            }, [borrowings, searchBorrow]);
+
             // Filter Opsi Member untuk Dropdown Searchable Peminjaman
             const filteredMemberOptions = useMemo(() => {
                 if (!memberSearch) return members;
@@ -1229,7 +1467,7 @@
             };
 
             const openAddBook = () => {
-                setBookForm({ id: '', code: `BK-00${books.length + 1}`, title: '', author: '', publisher: '', year: '2025', isbn: '', category: 'Fiksi', shelf: 'Rak A1', stock: 5, coverColor: 'from-blue-600 to-indigo-700' });
+                setBookForm({ id: '', code: `BK-00${books.length + 1}`, title: '', author: '', publisher: '', year: '2026', isbn: '', category: 'Fiksi', shelf: 'Rak A1', stock: 5, coverColor: 'from-blue-600 to-indigo-700' });
                 setModalType('addBook');
             };
 
@@ -1490,7 +1728,7 @@
 
                                         {/* Charts Mock & Popular Books */}
                                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                            <div className={`lg:col-span-2 p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
+                                            <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md'} lg:col-span-2`}>
                                                 <div className="flex justify-between items-center mb-6">
                                                     <div>
                                                         <h4 className="font-bold text-lg">Statistik Kunjungan Harian</h4>
@@ -1556,9 +1794,20 @@
                                                 <p className="text-slate-400 text-sm mt-1">Daftar buku fisik & e-book yang terdaftar di perpustakaan sekolah</p>
                                             </div>
                                             {hasAccess(['Admin', 'Petugas']) && (
-                                                <button onClick={openAddBook} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-3 rounded-xl font-bold transition-all text-sm shadow-lg shadow-amber-500/10">
-                                                    <Icon name="Plus" className="w-4.5 h-4.5" /> Tambah Buku Baru
-                                                </button>
+                                                <div className="flex gap-2.5 w-full sm:w-auto">
+                                                    <button onClick={() => { setImportBookFile(null); setModalType('importBookExcel'); }} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-slate-150 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl font-bold transition-all text-xs">
+                                                        <Icon name="Upload" className="w-4 h-4" /> Import Excel
+                                                    </button>
+                                                    <button onClick={handleExportBooksExcel} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-slate-150 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl font-bold transition-all text-xs">
+                                                        <Icon name="Download" className="w-4 h-4" /> Export Excel
+                                                    </button>
+                                                    <button onClick={handleExportBooksPDF} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-slate-150 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl font-bold transition-all text-xs">
+                                                        <Icon name="FileText" className="w-4 h-4" /> Export PDF
+                                                    </button>
+                                                    <button onClick={openAddBook} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-3 rounded-xl font-bold transition-all text-sm shadow-lg shadow-amber-500/10">
+                                                        <Icon name="Plus" className="w-4.5 h-4.5" /> Tambah Buku Baru
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
 
@@ -1611,19 +1860,27 @@
                                                         </div>
 
                                                         {hasAccess(['Admin', 'Petugas']) && (
-                                                            <div className="flex gap-1.5 mt-3 pt-2">
-                                                                <button onClick={() => openEditBook(book)} className="flex-1 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-[10px] font-bold transition-all flex items-center justify-center gap-1 text-slate-600 dark:text-slate-300">
-                                                                    <Icon name="Edit2" className="w-3 h-3 text-blue-500" /> Edit
+                                                            <div className="flex flex-col gap-1.5 mt-3 pt-2">
+                                                                <button onClick={() => triggerBarcodePrint(book)} className="w-full py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[10px] font-bold transition-all flex items-center justify-center gap-1">
+                                                                    <Icon name="Printer" className="w-3.5 h-3.5 text-amber-500" /> Cetak Barcode
                                                                 </button>
-                                                                <button onClick={() => handleDeleteBook(book.id)} className="px-2 py-1.5 rounded-md bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all duration-200">
-                                                                    <Icon name="Trash2" className="w-3 h-3" />
-                                                                </button>
+                                                                <div className="flex gap-1.5">
+                                                                    <button onClick={() => openEditBook(book)} className="flex-1 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-[10px] font-bold transition-all flex items-center justify-center gap-1 text-slate-600 dark:text-slate-300">
+                                                                        <Icon name="Edit2" className="w-3 h-3 text-blue-500" /> Edit
+                                                                    </button>
+                                                                    <button onClick={() => handleDeleteBook(book.id)} className="px-2 py-1.5 rounded-md bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all duration-200">
+                                                                        <Icon name="Trash2" className="w-3 h-3" />
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         )}
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
+                                        {filteredBooks.length === 0 && (
+                                            <p className="text-slate-400 italic text-center py-12">Belum ada buku terdaftar dalam pencarian.</p>
+                                        )}
                                     </div>
                                 )}
 
@@ -1652,7 +1909,7 @@
                                                     <h4 className="font-extrabold text-lg mt-4">{cat.name}</h4>
                                                     <p className="text-slate-400 text-sm mt-2 line-clamp-2">{cat.desc}</p>
                                                     <div className="flex gap-2 border-t border-slate-100 dark:border-slate-800/80 pt-4 mt-6">
-                                                        <button onClick={() => { setCategoryForm(cat); setModalType('editCategory'); }} className="flex-1 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-xs font-bold transition-all flex items-center justify-center gap-1.5">
+                                                        <button onClick={() => { setCategoryForm(cat); setModalType('editCategory'); }} className="flex-1 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5">
                                                             <Icon name="Edit2" className="w-3.5 h-3.5 text-blue-500" /> Edit Kategori
                                                         </button>
                                                     </div>
@@ -1807,7 +2064,7 @@
                                                                         setVisitorInput(prev => ({ ...prev, name: match.name, grade: match.grade }));
                                                                     }
                                                                 }}
-                                                                className={`w-full pl-3 pr-10 py-2.5 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
+                                                                className={`w-full pl-3 pr-10 py-2.5 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
                                                             />
                                                             <button type="button" onClick={() => setModalType('scanQR')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500">
                                                                 <Icon name="QrCode" className="w-5 h-5" />
@@ -1903,17 +2160,30 @@
                                     </div>
                                 )}
 
-                                {/* VIEW 6: PEMINJAMAN */}
+                                {/* VIEW 6: PEMINJAMAN (DENGAN FILTER PENCARIAN) */}
                                 {activeMenu === 'Peminjaman' && (
                                     <div className="space-y-6 animate-fadeIn">
                                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                             <div>
                                                 <h2 className="text-2xl font-black">Transaksi Sirkulasi Buku</h2>
-                                                <p className="text-slate-400 text-sm mt-1">Kelola pinjaman aktif, tanggal jatuh tempo, dan denda keterlambatan</p>
+                                                <p className="text-slate-400 text-sm mt-1">Kelola pinjaman aktif, tanggal jatuh tempo, perpanjangan, dan denda keterlambatan</p>
                                             </div>
                                             <button onClick={() => { setBorrowForm({ memberId: '', bookId: '', borrowDate: new Date().toISOString().split('T')[0] }); setModalType('addBorrow'); }} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-3 rounded-xl font-bold transition-all text-sm shadow-lg shadow-amber-500/10">
                                                 <Icon name="Plus" className="w-4.5 h-4.5" /> Peminjaman Baru
                                             </button>
+                                        </div>
+
+                                        {/* Bar Pencarian Sirkulasi */}
+                                        <div className={`p-4 rounded-xl border max-w-md ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                                            <div className="relative">
+                                                <input 
+                                                    type="text"
+                                                    placeholder="Cari kode pinjam, nama, ID anggota, atau buku..."
+                                                    value={searchBorrow}
+                                                    onChange={(e) => setSearchBorrow(e.target.value)}
+                                                    className={`w-full px-4 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                />
+                                            </div>
                                         </div>
 
                                         <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
@@ -1932,8 +2202,8 @@
                                                             <th className="py-4 px-3 text-right">Aksi</th>
                                                         </tr>
                                                     </thead>
-                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-                                                        {borrowings.map((b) => (
+                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-semibold">
+                                                        {filteredBorrowings.map((b) => (
                                                             <tr key={b.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20">
                                                                 <td className="py-4 px-3 text-slate-400">{b.id}</td>
                                                                 <td className="py-4 px-3">
@@ -1945,14 +2215,17 @@
                                                                 <td className="py-4 px-3 text-slate-400">{b.dueDate}</td>
                                                                 <td className="py-4 px-3 text-emerald-500 font-bold">{b.returnDate || '-'}</td>
                                                                 <td className="py-4 px-3">
-                                                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${b.status === 'Kembali' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>{b.status}</span>
+                                                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${b.status === 'Kembali' ? 'bg-emerald-500/10 text-emerald-500' : b.status === 'Terlambat' ? 'bg-rose-500/10 text-rose-500' : 'bg-blue-500/10 text-blue-500'}`}>{b.status}</span>
                                                                 </td>
                                                                 <td className="py-4 px-3">
                                                                     {b.fine > 0 ? <span className="text-rose-500 font-extrabold">Rp {b.fine.toLocaleString('id-ID')}</span> : '-'}
                                                                 </td>
                                                                 <td className="py-4 px-3 text-right">
                                                                     {b.status !== 'Kembali' && (
-                                                                        <button onClick={() => handleReturnBook(b.id)} className="py-1.5 px-3 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 text-xs font-bold">Kembalikan</button>
+                                                                        <div className="flex gap-2 justify-end">
+                                                                            <button onClick={() => handleExtendBorrowing(b.id)} className="py-1.5 px-3 rounded-lg bg-amber-500 text-slate-950 hover:bg-amber-600 text-xs font-bold transition-colors">Perpanjang</button>
+                                                                            <button onClick={() => handleReturnBook(b.id)} className="py-1.5 px-3 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 text-xs font-bold transition-colors">Kembalikan</button>
+                                                                        </div>
                                                                     )}
                                                                 </td>
                                                             </tr>
@@ -1960,6 +2233,9 @@
                                                     </tbody>
                                                 </table>
                                             </div>
+                                            {filteredBorrowings.length === 0 && (
+                                                <div className="text-center py-12 text-slate-400 italic">Transaksi peminjaman tidak ditemukan</div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -2096,7 +2372,7 @@
                                     <div className="space-y-6 animate-fadeIn">
                                         <div>
                                             <h2 className="text-2xl font-black">Pengaturan Perpustakaan</h2>
-                                            <p className="text-slate-400 text-sm mt-1">Konfigurasi nama sekolah, kebijakan durasi pinjam, dan tarif denda</p>
+                                            <p className="text-slate-400 text-sm mt-1">Konfigurasi nama sekolah, kebijakan denda, administrasi penandatangan laporan, dan pencadangan sistem</p>
                                         </div>
 
                                         <div className={`p-6 rounded-2xl border max-w-2xl ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
@@ -2212,7 +2488,7 @@
                                                             value={newClassInput}
                                                             onChange={(e) => setNewClassInput(e.target.value)}
                                                             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddClass(); } }}
-                                                            className={`flex-1 px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+                                                            className={`flex-1 px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50'}`}
                                                         />
                                                         <button type="button" onClick={handleAddClass} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all">Tambah</button>
                                                     </div>
@@ -2246,7 +2522,7 @@
                                                 <div className="flex flex-wrap gap-4">
                                                     <button 
                                                         onClick={handleExportBackup}
-                                                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-bold transition-all text-xs shadow-md shadow-blue-500/20"
+                                                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-bold transition-all text-xs shadow-md"
                                                     >
                                                         <Icon name="Download" className="w-4 h-4" /> Ekspor Data (Backup)
                                                     </button>
@@ -2260,7 +2536,7 @@
                                                     />
                                                     <button 
                                                         onClick={() => backupFileInputRef.current?.click()}
-                                                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl font-bold transition-all text-xs shadow-md shadow-emerald-500/20"
+                                                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl font-bold transition-all text-xs shadow-md"
                                                     >
                                                         <Icon name="Upload" className="w-4 h-4" /> Impor Data (Restore)
                                                     </button>
@@ -2298,13 +2574,113 @@
                                                 {modalType === 'scanQR' && 'Simulasi Scanner QR Code'}
                                                 {modalType === 'cardMember' && 'Kartu Anggota Perpustakaan'}
                                                 {modalType === 'importMemberExcel' && 'Import Data Anggota Perpustakaan'}
+                                                {modalType === 'importBookExcel' && 'Import Koleksi Buku via Excel'}
                                             </h3>
-                                            <button onClick={() => { setModalType(null); setImportFile(null); setImportSelectedClass(''); }} className="text-slate-400 hover:text-rose-500"><Icon name="X" className="w-6 h-6" /></button>
+                                            <button onClick={() => { setModalType(null); setImportFile(null); setImportSelectedClass(''); setImportBookFile(null); }} className="text-slate-400 hover:text-rose-500"><Icon name="X" className="w-6 h-6" /></button>
                                         </div>
 
                                         <div className="p-6 max-h-[80vh] overflow-y-auto scrollbar-thin">
                                             
-                                            {/* MODAL: IMPORT EXCEL MEMBERS (WITH MANDATORY CLASS SELECTION & REAL EXCEL PARSING) */}
+                                            {/* MODAL: IMPORT EXCEL BOOKS (REAL PARSING) */}
+                                            {modalType === 'importBookExcel' && (
+                                                <div className="space-y-5">
+                                                    <div className="p-4 rounded-xl bg-amber-500/10 border-l-4 border-amber-500 text-slate-800 dark:text-slate-200 text-sm space-y-2">
+                                                        <p className="font-bold flex items-center gap-1.5 text-amber-600 dark:text-amber-500">
+                                                            <Icon name="AlertTriangle" className="w-4 h-4" /> Aturan Format File Buku
+                                                        </p>
+                                                        <ul className="list-disc pl-5 space-y-1 text-xs text-slate-600 dark:text-slate-300">
+                                                            <li>Ekstensi file yang didukung: <strong>.xlsx</strong>, <strong>.xls</strong>, atau <strong>.csv</strong>.</li>
+                                                            <li>Jangan menghapus baris pertama (Header).</li>
+                                                            <li>Kolom <strong>Judul</strong> dan <strong>Kode_Buku</strong> wajib diisi lengkap.</li>
+                                                            <li>Jika kategori buku baru belum terdaftar di aplikasi, sistem akan mendaftarkannya secara otomatis.</li>
+                                                        </ul>
+                                                        <div className="pt-2">
+                                                            <a 
+                                                                href="data:text/csv;charset=utf-8,Judul,Kode_Buku,Penulis,Penerbit,Tahun,ISBN,Kategori,Rak,Stok" 
+                                                                download="template_buku.csv"
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 hover:bg-amber-600 text-xs font-bold transition-all shadow-md"
+                                                            >
+                                                                <Icon name="Download" className="w-3.5 h-3.5" /> Unduh Template Buku (.csv)
+                                                            </a>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden text-xs">
+                                                        <div className="bg-slate-100 dark:bg-slate-900 px-3 py-2 font-bold border-b border-slate-200 dark:border-slate-800">
+                                                            Struktur Kolom File Excel Buku:
+                                                        </div>
+                                                        <div className="overflow-x-auto">
+                                                            <table className="w-full text-left border-collapse text-[10px]">
+                                                                <thead>
+                                                                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold">
+                                                                        <th className="p-2">Judul</th>
+                                                                        <th className="p-2">Kode_Buku</th>
+                                                                        <th className="p-2">Penulis</th>
+                                                                        <th className="p-2">Penerbit</th>
+                                                                        <th className="p-2">Tahun</th>
+                                                                        <th className="p-2">ISBN</th>
+                                                                        <th className="p-2">Kategori</th>
+                                                                        <th className="p-2">Rak</th>
+                                                                        <th className="p-2">Stok</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    <tr className="text-slate-500">
+                                                                        <td className="p-2 border-b border-slate-100 dark:border-slate-900 font-bold text-rose-500">[Wajib]</td>
+                                                                        <td className="p-2 border-b border-slate-100 dark:border-slate-900 font-bold text-rose-500">[Wajib]</td>
+                                                                        <td className="p-2 border-b border-slate-100 dark:border-slate-900">[Opsional]</td>
+                                                                        <td className="p-2 border-b border-slate-100 dark:border-slate-900">[Opsional]</td>
+                                                                        <td className="p-2 border-b border-slate-100 dark:border-slate-900">[Opsional]</td>
+                                                                        <td className="p-2 border-b border-slate-100 dark:border-slate-900">[Opsional]</td>
+                                                                        <td className="p-2 border-b border-slate-100 dark:border-slate-900">[Opsional]</td>
+                                                                        <td className="p-2 border-b border-slate-100 dark:border-slate-900">[Opsional]</td>
+                                                                        <td className="p-2 border-b border-slate-100 dark:border-slate-900">[Opsional]</td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Dropzone File Upload */}
+                                                    <div className="border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-xl p-6 text-center bg-slate-50 dark:bg-slate-950/40 hover:border-amber-500 dark:hover:border-amber-500 transition-colors relative cursor-pointer group">
+                                                        <input 
+                                                            type="file" 
+                                                            accept=".xlsx, .xls, .csv" 
+                                                            onChange={handleBookFileChange}
+                                                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                        />
+                                                        <div className="space-y-2 pointer-events-none">
+                                                            <div className="mx-auto w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                                <Icon name="Upload" className="w-6 h-6" />
+                                                            </div>
+                                                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                                                {importBookFile ? importBookFile.name : "Klik atau seret file koleksi buku Anda ke sini"}
+                                                            </p>
+                                                            <p className="text-xs text-slate-400">Format: .xlsx, .xls, .csv</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => { setModalType(null); setImportBookFile(null); }} 
+                                                            className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold text-slate-700 dark:text-slate-300"
+                                                        >
+                                                            Batal
+                                                        </button>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={handleExecuteBookImport}
+                                                            disabled={!importBookFile}
+                                                            className={`px-5 py-2 rounded-xl font-bold text-xs shadow-lg transition-all ${importBookFile ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-amber-500/20 cursor-pointer' : 'bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-600 cursor-not-allowed shadow-none'}`}
+                                                        >
+                                                            Proses Import Buku
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* MODAL: IMPORT EXCEL MEMBERS */}
                                             {modalType === 'importMemberExcel' && (
                                                 <div className="space-y-5">
                                                     
@@ -2681,7 +3057,7 @@
                                                         <div className="flex gap-4 mt-4 items-center">
                                                             <UserAvatar gender={selectedItem.gender} className="w-20 h-20 rounded-xl" />
                                                             <div className="overflow-hidden flex-1">
-                                                                <h4 className="font-extrabold text-base truncate text-amber-400 leading-tight">{selectedItem.name}</h4>
+                                                                <h4 className="font-extrabold text-base truncate text-amber-400">{selectedItem.name}</h4>
                                                                 <table className="text-[10px] mt-1.5 w-full text-slate-300">
                                                                     <tbody>
                                                                         <tr>
@@ -2725,7 +3101,7 @@
                                                         <div className="w-full h-1 bg-amber-500 absolute animate-scan line-glow"></div>
                                                         <Icon name="QrCode" className="w-24 h-24 text-slate-400 opacity-60" />
                                                     </div>
-                                                    <p className="text-xs text-slate-400 px-8">Kamera siap mendeteksi QR Code Kartu Anggota Digital secara instan.</p>
+                                                    <p className="text-xs text-slate-400 px-8">Kamera siap mendeteksi QR Code Kartu Anggota Digital atau Buku secara instan.</p>
                                                     
                                                     {members.length > 0 ? (
                                                         <div className="space-y-2 px-6 text-left">
